@@ -1,0 +1,10 @@
+{
+  "serial_port": "ttyUSB0",
+  "baud_rate": 9600,
+  "servers": [
+    "http"
+  ],
+  "http": {
+    "socket": 3000
+  }
+}

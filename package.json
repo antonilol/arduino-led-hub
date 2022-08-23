@@ -1,0 +1,13 @@
+{
+  "name": "arduino-led-hub",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index",
+    "dev": "tsc && node dist/index"
+  },
+  "dependencies": {
+    "@types/node": "^18.6.3",
+    "serialport": "^10.4.0",
+    "typescript": "^4.7.4"
+  }
+}
