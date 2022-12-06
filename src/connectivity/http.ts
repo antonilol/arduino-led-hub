@@ -22,12 +22,12 @@
 
 import { createServer } from 'http';
 import { URL } from 'url';
-import { readConfig } from '../config';
+import { config } from '../config';
 import type { Server } from '.';
 import * as ledstrip from '../devices/ledstrip';
 import { sendBytes } from '../serial';
 
-const port = readConfig().http?.socket || 3000;
+const port = config.http?.socket || 3000;
 
 const server = createServer((req, res) => {
   const url = new URL(`http://localhost/${req.url}`);
@@ -105,7 +105,7 @@ const server = createServer((req, res) => {
             msgs = ledstrip.setLedsRGBMsgs(parseInt(params.start), data);
           }
           res.writeHead(200);
-          res.write(`Success\ndebug msgs sent ${JSON.stringify(msgs)}\n`);
+          res.write(`Success\n`);
           if ('block' in params) {
             sendBytes(msgs, () => res.end());
           } else {
@@ -128,7 +128,7 @@ const server = createServer((req, res) => {
           }
           const msg = Buffer.from(data);
           res.writeHead(200);
-          res.write(`Success\ndebug msgs sent ${JSON.stringify(msg)}\n`);
+          res.write(`Success\n`);
           if ('block' in params) {
             sendBytes(msg, () => res.end());
           } else {

@@ -1,6 +1,7 @@
 {
   "serial_port": "ttyUSB0",
   "baud_rate": 9600,
+  "debug_serial_msgs": true,
   "servers": [
     "http"
   ],

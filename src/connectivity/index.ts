@@ -20,19 +20,19 @@
  * SOFTWARE.
  */
 
-import { Config, readConfig } from '../config';
+import { config } from '../config';
 import { HttpServer } from './http';
 
 export class Server {
   start(): void {}
 }
 
-const availableServers: { [name in Config.Servers]: typeof Server } = {
+const availableServers: { [name in typeof config.servers[number]]: typeof Server } = {
   http: HttpServer
 };
 
 export function initServers() {
-  for (const s of readConfig().servers) {
+  for (const s of config.servers) {
     new availableServers[s]().start();
   }
 }

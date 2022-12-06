@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+import { config } from '../config';
+
 const chars = {
   arrowUp:   '\u2191',
   arrowDown: '\u2193'
@@ -42,6 +44,10 @@ const MESSAGE_COLOR = rgb(100, 100, 255);
 const ROW_LENGTH = 16;
 
 export function logData(device: string, rx: boolean, data: Buffer): void {
+  if (!config.debug_serial_msgs) {
+    return;
+  }
+
   logTimeDiff();
 
   const info = [
