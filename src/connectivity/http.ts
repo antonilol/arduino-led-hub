@@ -68,7 +68,7 @@ const server = createServer((req, res) => {
             res.end(`Query string parameter data must be an array\n`);
             return;
           }
-          for (var i = 0; i < data.length; i++) {
+          for (let i = 0; i < data.length; i++) {
             if (!('r' in data[i] && 'g' in data[i] && 'b' in data[i] && (!rgbw || 'w' in data[i]))) {
               res.writeHead(400);
               res.end(`Missing arguments in query string parameter data[${i}]. Required args: r, g, b${rgbw ? ', w' : ''}\n`);
@@ -124,7 +124,7 @@ const server = createServer((req, res) => {
     res.end('Not Found\n');
   } catch (e) {
     res.writeHead(400);
-    res.end(`${(e.message || e)}\n`);
+    res.end(`${(e instanceof Error ? e.message : e)}\n`);
     return;
   }
 });

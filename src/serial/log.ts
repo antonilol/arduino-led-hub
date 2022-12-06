@@ -23,7 +23,7 @@
 const chars = {
   arrowUp:   '\u2191',
   arrowDown: '\u2193'
-};
+} as const;
 
 function color(...c: number[]) {
   return `\x1b[${c.join(';')}m`;
@@ -52,7 +52,7 @@ export function logData(device: string, rx: boolean, data: Buffer): void {
   ].join(' ');
   const filler = ' '.repeat(info.length);
 
-  for (var i = 0; i < data.length; i += ROW_LENGTH) {
+  for (let i = 0; i < data.length; i += ROW_LENGTH) {
     console.log(
       (i ? filler : (DATA_INFO_COLOR + info + RESET)) +
       '  ' +
@@ -67,7 +67,7 @@ export function logMessage(message: string): void {
   console.log(MESSAGE_COLOR + BOLD + '(i) ' + RESET + MESSAGE_COLOR + message + RESET);
 }
 
-var lastLog: number | void;
+let lastLog: number | undefined;
 
 function logTimeDiff() {
   const now = new Date().getTime();
@@ -80,10 +80,10 @@ function logTimeDiff() {
 }
 
 function dataLine(line: Buffer): string {
-  var hex = '';
-  var ascii = '';
+  let hex = '';
+  let ascii = '';
 
-  for (var i = 0; i < line.length; i++) {
+  for (let i = 0; i < line.length; i++) {
     const c = line.subarray(i, i + 1);
     hex += c.toString('hex') + ' ';
     if (line[i] > 0x1f && line[i] < 0x7f) {

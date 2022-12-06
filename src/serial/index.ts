@@ -31,8 +31,8 @@ const dir = '/dev/';
 const device = readConfig().serial_port || 'ttyUSB0';
 const baudRate = readConfig().baud_rate || 9600;
 
-var port: void | SerialPort;
-var portLocked = false;
+let port: undefined | SerialPort;
+let portLocked = false;
 
 export function initDevices() {
   fs.readdirSync('/dev/').forEach(filename => {
@@ -47,7 +47,7 @@ export function initDevices() {
 const CONNECTED = 3;
 const RECVD = 5;
 
-var ready = false;
+let ready = false;
 
 const queue: { b: Buffer, onSent?: () => void }[] = [];
 
@@ -63,21 +63,27 @@ export function sendBytes(b: Buffer | Buffer[], onSent?: () => void): void {
 }
 
 function trySend() {
-  if (ready && queue.length && port) {
-    const q = queue.shift();
-    logData(device, false, q.b);
-    port.write(q.b);
-    if (q.onSent) {
-      q.onSent();
-    }
-    ready = false;
+  if (!ready || !port) {
+    return;
   }
+
+  const q = queue.shift();
+  if (!q) {
+    return;
+  }
+
+  logData(device, false, q.b);
+  port.write(q.b);
+  if (q.onSent) {
+    q.onSent();
+  }
+  ready = false;
 }
 
 function onData(b: Buffer): void {
   logData(device, true, b);
   // for now
-  for (var i = 0; i < b.length; i++) {
+  for (let i = 0; i < b.length; i++) {
     if (b[i] === CONNECTED || b[i] === RECVD) {
       ready = true;
       trySend();
@@ -92,12 +98,12 @@ async function tryOpen(filename: string): Promise<void> {
       logMessage(`Opening serial port ${path}`);
       // lock while opening
       portLocked = true;
-      port = await new Promise<void | SerialPort>(resolve => {
+      port = await new Promise<undefined | SerialPort>(resolve => {
         const p = new SerialPort({ path, baudRate }, (err) => {
           if (err) {
             console.error(`An unexpected error occurred while opening ${path} at ${baudRate} Bd`);
             console.error(err.message);
-            resolve();
+            resolve(undefined);
           } else {
             resolve(p);
           }

@@ -55,7 +55,7 @@ export function setLedsRGBMsgs(start: number, data: RGB[]): Buffer[] {
   msg.writeUint8(LEDSTRIP_SET_LEDS_RGB, 0);
   msg.writeUint16LE(start, 1);
   msg.writeUint8(data.length, 3);
-  var p = 4;
+  let p = 4;
   for (const d of data) {
     if (p + 3 > 63) {
       msgs.push(msg.subarray(0, p));
@@ -76,7 +76,7 @@ export function setLedsRGBWMsgs(start: number, data: RGBW[]): Buffer[] {
   msg.writeUint8(LEDSTRIP_SET_LEDS_RGBW, 0);
   msg.writeUint16LE(start, 1);
   msg.writeUint8(data.length, 3);
-  var p = 4;
+  let p = 4;
   for (const d of data) {
     if (p + 4 > 63) {
       msgs.push(msg.subarray(0, p));
