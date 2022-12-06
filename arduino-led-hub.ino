@@ -52,7 +52,7 @@
 #define LEDSTRIP_SET_LED_RGB 1
 // 0 bytes, clears
 #define LEDSTRIP_CLEAR 2
-// 0 bytse, sent when ready to receive once on startup (arduino)
+// 0 bytes, sent when ready to receive once on startup (arduino)
 #define CONNECTED 3
 // 6 bytes, 2 bytes u16 (le) led number, g, r, b, w
 // calls FastLED.show()
@@ -65,6 +65,12 @@
 // 3+4n bytes, 2 bytes u16 (le) led number, 1 byte length n, n times g, r, b, w
 // calls FastLED.show()
 #define LEDSTRIP_SET_LEDS_RGBW 7
+// 3 bytes, g, r, b
+// calls FastLED.show()
+#define LEDSTRIP_FILL_RGB 8
+// 4 bytes, g, r, b, w
+// calls FastLED.show()
+#define LEDSTRIP_FILL_RGBW 9
 
 // display settings
 #define freq 120
@@ -98,17 +104,15 @@ u8 disps[DISPLAYS] = {0};
 #endif
 
 #ifdef ENABLE_LEDSTRIP
-u8 ledstrip[NUM_LEDS][LED_BYTES];
+u8 ledstrip[NUM_LEDS][LED_BYTES] = {0};
 #endif
 
 void setup() {
+  Serial.begin(BAUD_RATE);
+
 #ifdef ENABLE_LEDSTRIP
   FastLED.addLeds<WS2812, LEDSTRIP_PIN, RGB>((CRGB *) ledstrip, FASTLED_NUM_LEDS);
 #endif
-
-  Serial.begin(BAUD_RATE);
-
-  Serial.write(CONNECTED);
 
 #ifdef ENABLE_DISPLAY
   for (u8 i = 0; i < 8; i++) {
@@ -121,12 +125,14 @@ void setup() {
     digitalWrite(displayPins[i], 1);
   }
 #endif
+
+  Serial.write(CONNECTED);
 }
 
 bool tr = 0; // type received
 bool incomplete = 0; // data bytes are not completely read because they were unavailable
 u8 t;
-u8 ledstrip_msg[3];
+u8 ledstrip_msg[4];
 // points to the led number in a received message
 #define LED_N_POINTER ((u16 *) (ledstrip_msg))
 // only for SET_LEDS_RGB{,W}
@@ -161,6 +167,26 @@ void loop() {
           Serial.readBytes((u8 *) (ledstrip + *LED_N_POINTER), 3);
           FastLED.show();
         }
+        Serial.write(MSG_RECVD);
+        tr = 0;
+      }
+    } else if (t == LEDSTRIP_FILL_RGB) {
+      if (Serial.available() >= 3) {
+        Serial.readBytes(ledstrip_msg, 3);
+        for (int i = 0; i < NUM_LEDS; i++) {
+          memcpy(ledstrip + i, ledstrip_msg, 3);
+        }
+        FastLED.show();
+        Serial.write(MSG_RECVD);
+        tr = 0;
+      }
+    } else if (t == LEDSTRIP_FILL_RGBW) {
+      if (Serial.available() >= 4) {
+        Serial.readBytes(ledstrip_msg, 4);
+        for (int i = 0; i < NUM_LEDS; i++) {
+          memcpy(ledstrip + i, ledstrip_msg, 4);
+        }
+        FastLED.show();
         Serial.write(MSG_RECVD);
         tr = 0;
       }
@@ -262,12 +288,19 @@ void loop() {
 #ifdef MICROTIME
     delayMicroseconds(1000000 / freq / DISPLAYS);
 #else
-    delay(1000 / freq / w);
+    delay(1000 / freq / DISPLAYS);
 #endif
     for (u8 j = 0; j < 8; j++) {
       digitalWrite(segmentPins[j], 0);
     }
     digitalWrite(displayPins[i], 1);
   }
+#else
+  // the same delay as with ENABLE_DISPLAY
+#ifdef MICROTIME
+  delayMicroseconds(1000000 / freq);
+#else
+  delay(1000 / freq);
+#endif
 #endif
 }

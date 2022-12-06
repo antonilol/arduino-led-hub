@@ -24,6 +24,8 @@ const LEDSTRIP_SET_LED_RGB = 1;
 const LEDSTRIP_SET_LED_RGBW = 4;
 const LEDSTRIP_SET_LEDS_RGB = 6;
 const LEDSTRIP_SET_LEDS_RGBW = 7;
+const LEDSTRIP_FILL_RGB = 8;
+const LEDSTRIP_FILL_RGBW = 9;
 
 export function setLedRGBMsg(n: number, r: number, g: number, b: number): Buffer {
   const msg = Buffer.allocUnsafe(6);
@@ -43,6 +45,25 @@ export function setLedRGBWMsg(n: number, r: number, g: number, b: number, w: num
   msg.writeUint8(r, 4);
   msg.writeUint8(b, 5);
   msg.writeUint8(w, 6);
+  return msg;
+}
+
+export function fillRGBMsg(r: number, g: number, b: number): Buffer {
+  const msg = Buffer.allocUnsafe(4);
+  msg.writeUint8(LEDSTRIP_FILL_RGB, 0);
+  msg.writeUint8(g, 1);
+  msg.writeUint8(r, 2);
+  msg.writeUint8(b, 3);
+  return msg;
+}
+
+export function fillRGBWMsg(r: number, g: number, b: number, w: number): Buffer {
+  const msg = Buffer.allocUnsafe(5);
+  msg.writeUint8(LEDSTRIP_FILL_RGBW, 0);
+  msg.writeUint8(g, 1);
+  msg.writeUint8(r, 2);
+  msg.writeUint8(b, 3);
+  msg.writeUint8(w, 4);
   return msg;
 }
 

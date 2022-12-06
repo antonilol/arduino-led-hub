@@ -24,7 +24,7 @@ import { createServer } from 'http';
 import { URL } from 'url';
 import { readConfig } from '../config';
 import type { Server } from '.';
-import { setLedRGBMsg, setLedRGBWMsg, setLedsRGBMsgs, setLedsRGBWMsgs } from '../devices/ledstrip';
+import { setLedRGBMsg, setLedRGBWMsg, fillRGBMsg, fillRGBWMsg, setLedsRGBMsgs, setLedsRGBWMsgs } from '../devices/ledstrip';
 import { sendBytes } from '../serial';
 
 const port = readConfig().http?.socket || 3000;
@@ -57,6 +57,29 @@ const server = createServer((req, res) => {
         } else {
           res.writeHead(400);
           res.end(`Missing arguments in query string. Required args: n, r, g, b${rgbw ? ', w' : ''}\n`);
+          return;
+        }
+      } else if (args[0] === 'fillRGB' || args[0] === 'fillRGBW') {
+        const rgbw = args[0] === 'fillRGBW';
+        if ('r' in params && 'g' in params && 'b' in params && (!rgbw || 'w' in params)) {
+          let msg: Buffer;
+          if (rgbw) {
+            msg = fillRGBWMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b), parseInt(params.w));
+          } else {
+            msg = fillRGBMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b));
+          }
+          res.writeHead(200);
+          res.write(`Success\n`);
+          if ('block' in params) {
+            sendBytes(msg, () => res.end());
+          } else {
+            sendBytes(msg);
+            res.end();
+          }
+          return;
+        } else {
+          res.writeHead(400);
+          res.end(`Missing arguments in query string. Required args: r, g, b${rgbw ? ', w' : ''}\n`);
           return;
         }
       } else if (args[0] === 'setLedsRGB' || args[0] === 'setLedsRGBW') {
