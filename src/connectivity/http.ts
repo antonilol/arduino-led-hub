@@ -24,7 +24,7 @@ import { createServer } from 'http';
 import { URL } from 'url';
 import { readConfig } from '../config';
 import type { Server } from '.';
-import { setLedRGBMsg, setLedRGBWMsg, fillRGBMsg, fillRGBWMsg, setLedsRGBMsgs, setLedsRGBWMsgs } from '../devices/ledstrip';
+import * as ledstrip from '../devices/ledstrip';
 import { sendBytes } from '../serial';
 
 const port = readConfig().http?.socket || 3000;
@@ -41,9 +41,9 @@ const server = createServer((req, res) => {
         if ('n' in params && 'r' in params && 'g' in params && 'b' in params && (!rgbw || 'w' in params)) {
           let msg: Buffer;
           if (rgbw) {
-            msg = setLedRGBWMsg(parseInt(params.n), parseInt(params.r), parseInt(params.g), parseInt(params.b), parseInt(params.w));
+            msg = ledstrip.setLedRGBWMsg(parseInt(params.n), parseInt(params.r), parseInt(params.g), parseInt(params.b), parseInt(params.w));
           } else {
-            msg = setLedRGBMsg(parseInt(params.n), parseInt(params.r), parseInt(params.g), parseInt(params.b));
+            msg = ledstrip.setLedRGBMsg(parseInt(params.n), parseInt(params.r), parseInt(params.g), parseInt(params.b));
           }
           res.writeHead(200);
           res.write(`Success\n`);
@@ -64,9 +64,9 @@ const server = createServer((req, res) => {
         if ('r' in params && 'g' in params && 'b' in params && (!rgbw || 'w' in params)) {
           let msg: Buffer;
           if (rgbw) {
-            msg = fillRGBWMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b), parseInt(params.w));
+            msg = ledstrip.fillRGBWMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b), parseInt(params.w));
           } else {
-            msg = fillRGBMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b));
+            msg = ledstrip.fillRGBMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b));
           }
           res.writeHead(200);
           res.write(`Success\n`);
@@ -100,9 +100,9 @@ const server = createServer((req, res) => {
           }
           let msgs: Buffer[];
           if (rgbw) {
-            msgs = setLedsRGBWMsgs(parseInt(params.start), data);
+            msgs = ledstrip.setLedsRGBWMsgs(parseInt(params.start), data);
           } else {
-            msgs = setLedsRGBMsgs(parseInt(params.start), data);
+            msgs = ledstrip.setLedsRGBMsgs(parseInt(params.start), data);
           }
           res.writeHead(200);
           res.write(`Success\ndebug msgs sent ${JSON.stringify(msgs)}\n`);

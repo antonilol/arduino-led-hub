@@ -20,51 +20,33 @@
  * SOFTWARE.
  */
 
-const LEDSTRIP_SET_LED_RGB = 1;
-const LEDSTRIP_SET_LED_RGBW = 4;
-const LEDSTRIP_SET_LEDS_RGB = 6;
-const LEDSTRIP_SET_LEDS_RGBW = 7;
-const LEDSTRIP_FILL_RGB = 8;
-const LEDSTRIP_FILL_RGBW = 9;
+const msgType = {
+  SET_LED_RGB: 1,
+  SET_LED_RGBW: 4,
+  SET_LEDS_RGB: 6,
+  SET_LEDS_RGBW: 7,
+  FILL_RGB: 8,
+  FILL_RGBW: 9
+} as const;
 
 export function setLedRGBMsg(n: number, r: number, g: number, b: number): Buffer {
-  const msg = Buffer.allocUnsafe(6);
-  msg.writeUint8(LEDSTRIP_SET_LED_RGB, 0);
+  const msg = Buffer.from([msgType.SET_LED_RGB, 0, 0, g, r, b]);
   msg.writeUint16LE(n, 1);
-  msg.writeUint8(g, 3);
-  msg.writeUint8(r, 4);
-  msg.writeUint8(b, 5);
   return msg;
 }
 
 export function setLedRGBWMsg(n: number, r: number, g: number, b: number, w: number): Buffer {
-  const msg = Buffer.allocUnsafe(7);
-  msg.writeUint8(LEDSTRIP_SET_LED_RGBW, 0);
+  const msg = Buffer.from([msgType.SET_LED_RGBW, 0, 0, g, r, b, w]);
   msg.writeUint16LE(n, 1);
-  msg.writeUint8(g, 3);
-  msg.writeUint8(r, 4);
-  msg.writeUint8(b, 5);
-  msg.writeUint8(w, 6);
   return msg;
 }
 
 export function fillRGBMsg(r: number, g: number, b: number): Buffer {
-  const msg = Buffer.allocUnsafe(4);
-  msg.writeUint8(LEDSTRIP_FILL_RGB, 0);
-  msg.writeUint8(g, 1);
-  msg.writeUint8(r, 2);
-  msg.writeUint8(b, 3);
-  return msg;
+  return Buffer.from([msgType.FILL_RGB, g, r, b]);
 }
 
 export function fillRGBWMsg(r: number, g: number, b: number, w: number): Buffer {
-  const msg = Buffer.allocUnsafe(5);
-  msg.writeUint8(LEDSTRIP_FILL_RGBW, 0);
-  msg.writeUint8(g, 1);
-  msg.writeUint8(r, 2);
-  msg.writeUint8(b, 3);
-  msg.writeUint8(w, 4);
-  return msg;
+  return Buffer.from([msgType.FILL_RGB, g, r, b, w]);
 }
 
 type RGB = { r: number, g: number, b: number };
@@ -73,7 +55,7 @@ type RGBW = RGB & { w: number };
 export function setLedsRGBMsgs(start: number, data: RGB[]): Buffer[] {
   const msgs: Buffer[] = [];
   let msg = Buffer.allocUnsafe(63);
-  msg.writeUint8(LEDSTRIP_SET_LEDS_RGB, 0);
+  msg.writeUint8(msgType.SET_LEDS_RGB, 0);
   msg.writeUint16LE(start, 1);
   msg.writeUint8(data.length, 3);
   let p = 4;
@@ -94,7 +76,7 @@ export function setLedsRGBMsgs(start: number, data: RGB[]): Buffer[] {
 export function setLedsRGBWMsgs(start: number, data: RGBW[]): Buffer[] {
   const msgs: Buffer[] = [];
   let msg = Buffer.allocUnsafe(63);
-  msg.writeUint8(LEDSTRIP_SET_LEDS_RGBW, 0);
+  msg.writeUint8(msgType.SET_LEDS_RGBW, 0);
   msg.writeUint16LE(start, 1);
   msg.writeUint8(data.length, 3);
   let p = 4;
