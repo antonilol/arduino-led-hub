@@ -20,131 +20,113 @@
  * SOFTWARE.
  */
 
-import { createServer } from 'http';
-import { URL } from 'url';
+import { createServer, ServerResponse } from 'http';
+import { URL, URLSearchParams } from 'url';
 import { config } from '../config';
 import type { Server } from '.';
 import * as ledstrip from '../devices/ledstrip';
 import { sendBytes } from '../serial';
+import { join } from '../util';
+
+function readParams(searchParams: URLSearchParams): { [k: string]: string } {
+  const params: { [k: string]: string } = {};
+
+  for (const [k, v] of searchParams.entries()) {
+    if (params[k] !== undefined) {
+      throw new Error(`Duplicate parameter ${k}`);
+    }
+    params[k] = v;
+  }
+
+  return params;
+}
+
+/** Does more than only checking, it also sends a nice error message
+ * Returns true if no params are missing and none are useless
+ */
+function checkParams<R extends string, O extends string>(
+  res: ServerResponse,
+  params: { [k: string]: string },
+  requiredParams: readonly R[],
+  optionalParams: readonly O[],
+  extra?: string
+): asserts params is ({ [k in R]: string } & { [k in O]?: string }) {
+  const missing = requiredParams.filter(p => !(p in params));
+  const useless = Object.keys(params).filter(p => !requiredParams.includes(p as R) && !optionalParams.includes(p as O));
+
+  if (missing.length) {
+    throw new Error(`Missing required query string parameter${missing.length === 1 ? '' : 's'} ${join(missing.map(p => `"${p}"`))}${extra ? ` ${extra}` : ''}`);
+  } else if (useless.length) {
+    throw new Error(`Useless query string parameter${useless.length === 1 ? '' : 's'} ${join(useless.map(p => `"${p}"`))}${extra ? ` ${extra}` : ''}`);
+  }
+}
+
+function successAndSend(res: ServerResponse, msg: Buffer | Buffer[], block: boolean): void {
+  res.writeHead(200);
+  res.write(`Success\n`);
+
+  if (block) {
+    sendBytes(msg, () => res.end());
+  } else {
+    sendBytes(msg);
+    res.end();
+  }
+}
 
 const port = config.http?.socket || 3000;
 
 const server = createServer((req, res) => {
-  const url = new URL(`http://localhost/${req.url}`);
-  const args = url.pathname.split('/').filter(x => x.trim());
-  /** already uri decoded */
-  const params = Object.fromEntries(url.searchParams.entries());
   try {
+    const url = new URL(`http://localhost/${req.url}`);
+    const args = url.pathname.split('/').filter(x => x.trim());
+    const params = readParams(url.searchParams);
     if (args.length === 1) {
       if (args[0] === 'setLedRGB' || args[0] === 'setLedRGBW') {
         const rgbw = args[0] === 'setLedRGBW';
-        if ('n' in params && 'r' in params && 'g' in params && 'b' in params && (!rgbw || 'w' in params)) {
-          let msg: Buffer;
-          if (rgbw) {
-            msg = ledstrip.setLedRGBWMsg(parseInt(params.n), parseInt(params.r), parseInt(params.g), parseInt(params.b), parseInt(params.w));
-          } else {
-            msg = ledstrip.setLedRGBMsg(parseInt(params.n), parseInt(params.r), parseInt(params.g), parseInt(params.b));
-          }
-          res.writeHead(200);
-          res.write(`Success\n`);
-          if ('block' in params) {
-            sendBytes(msg, () => res.end());
-          } else {
-            sendBytes(msg);
-            res.end();
-          }
-          return;
+        checkParams(res, params, rgbw ? ['n', 'r', 'g', 'b', 'w'] : ['n', 'r', 'g', 'b'], ['block']);
+        let msg: Buffer;
+        if (rgbw) {
+          msg = ledstrip.setLedRGBWMsg(parseInt(params.n), parseInt(params.r), parseInt(params.g), parseInt(params.b), parseInt(params.w));
         } else {
-          res.writeHead(400);
-          res.end(`Missing arguments in query string. Required args: n, r, g, b${rgbw ? ', w' : ''}\n`);
-          return;
+          msg = ledstrip.setLedRGBMsg(parseInt(params.n), parseInt(params.r), parseInt(params.g), parseInt(params.b));
         }
+        successAndSend(res, msg, params.block !== undefined);
       } else if (args[0] === 'fillRGB' || args[0] === 'fillRGBW') {
         const rgbw = args[0] === 'fillRGBW';
-        if ('r' in params && 'g' in params && 'b' in params && (!rgbw || 'w' in params)) {
-          let msg: Buffer;
-          if (rgbw) {
-            msg = ledstrip.fillRGBWMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b), parseInt(params.w));
-          } else {
-            msg = ledstrip.fillRGBMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b));
-          }
-          res.writeHead(200);
-          res.write(`Success\n`);
-          if ('block' in params) {
-            sendBytes(msg, () => res.end());
-          } else {
-            sendBytes(msg);
-            res.end();
-          }
-          return;
+        checkParams(res, params, rgbw ? ['r', 'g', 'b', 'w'] : ['r', 'g', 'b'], ['block']);
+        let msg: Buffer;
+        if (rgbw) {
+          msg = ledstrip.fillRGBWMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b), parseInt(params.w));
         } else {
-          res.writeHead(400);
-          res.end(`Missing arguments in query string. Required args: r, g, b${rgbw ? ', w' : ''}\n`);
-          return;
+          msg = ledstrip.fillRGBMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b));
         }
+        successAndSend(res, msg, params.block !== undefined);
       } else if (args[0] === 'setLedsRGB' || args[0] === 'setLedsRGBW') {
         const rgbw = args[0] === 'setLedsRGBW';
-        if ('start' in params && 'data' in params) {
-          const data = JSON.parse(params.data);
-          if (!Array.isArray(data)) {
-            res.writeHead(400);
-            res.end(`Query string parameter data must be an array\n`);
-            return;
-          }
-          for (let i = 0; i < data.length; i++) {
-            if (!('r' in data[i] && 'g' in data[i] && 'b' in data[i] && (!rgbw || 'w' in data[i]))) {
-              res.writeHead(400);
-              res.end(`Missing arguments in query string parameter data[${i}]. Required args: r, g, b${rgbw ? ', w' : ''}\n`);
-              return;
-            }
-          }
-          let msgs: Buffer[];
-          if (rgbw) {
-            msgs = ledstrip.setLedsRGBWMsgs(parseInt(params.start), data);
-          } else {
-            msgs = ledstrip.setLedsRGBMsgs(parseInt(params.start), data);
-          }
-          res.writeHead(200);
-          res.write(`Success\n`);
-          if ('block' in params) {
-            sendBytes(msgs, () => res.end());
-          } else {
-            sendBytes(msgs);
-            res.end();
-          }
-          return;
-        } else {
-          res.writeHead(400);
-          res.end(`Missing arguments in query string. Required args: start, data\n`);
-          return;
+        checkParams(res, params, ['data'], ['start', 'block']);
+        const data = JSON.parse(params.data);
+        if (!Array.isArray(data)) {
+          throw new Error(`Query string parameter "data" must be an array\n`);
         }
-      } else if (args[0] == 'raw') {
-        if ('data' in params) {
-          const data = JSON.parse(params.data);
-          if (!Array.isArray(data)) {
-            res.writeHead(400);
-            res.end(`Query string parameter data must be an array\n`);
-            return;
-          }
-          const msg = Buffer.from(data);
-          res.writeHead(200);
-          res.write(`Success\n`);
-          if ('block' in params) {
-            sendBytes(msg, () => res.end());
-          } else {
-            sendBytes(msg);
-            res.end();
-          }
-          return;
-        } else {
-          res.writeHead(400);
-          res.end(`Missing arguments in query string. Required args: start, data\n`);
-          return;
+        for (let i = 0; i < data.length; i++) {
+          checkParams(res, data[i], rgbw ? ['r', 'g', 'b', 'w'] : ['r', 'g', 'b'], [], `in data[${i}]`);
         }
+        let msgs: Buffer[];
+        const start = params.start === undefined ? 0 : parseInt(params.start);
+        if (rgbw) {
+          msgs = ledstrip.setLedsRGBWMsgs(start, data);
+        } else {
+          msgs = ledstrip.setLedsRGBMsgs(start, data);
+        }
+        successAndSend(res, msgs, params.block !== undefined);
+      } else {
+        res.writeHead(404);
+        res.end('Not Found\n');
       }
+    } else {
+      res.writeHead(404);
+      res.end('Not Found\n');
     }
-    res.writeHead(404);
-    res.end('Not Found\n');
   } catch (e) {
     res.writeHead(400);
     res.end(`${(e instanceof Error ? e.message : e)}\n`);
