@@ -15,7 +15,7 @@ curl --unix-socket /path/to/socket.sock "localhost/fillRGB?r=0&g=255&b=255"
 Sets the first 50 LEDs to a gradient from green to blue
 
 ```
-curl --unix-socket /tmp/arduino.sock "localhost/setLedsRGB?data=$(node -pe 'encodeURIComponent(JSON.stringify(new Array(50).fill().map((_,i)=>({r:0,g:255-i*5,b:i*5}))))')"
+curl --unix-socket /path/to/socket.sock "localhost/setLedsRGB?data=$(node -pe 'encodeURIComponent(JSON.stringify(new Array(50).fill().map((_,i)=>({r:0,g:255-i*5,b:i*5}))))')"
 ```
 
 This evaluates the following JavaScript with `node -pe`:

@@ -23,16 +23,16 @@
 import { config } from '../config';
 import { HttpServer } from './http';
 
-export class Server {
-  start(): void {}
+export interface Server {
+	start(): void;
 }
 
-const availableServers: { [name in typeof config.servers[number]]: typeof Server } = {
-  http: HttpServer
+const availableServers: { [name in typeof config.servers[number]]: new () => Server } = {
+	http: HttpServer
 };
 
 export function initServers() {
-  for (const s of config.servers) {
-    new availableServers[s]().start();
-  }
+	for (const s of config.servers) {
+		new availableServers[s]().start();
+	}
 }
