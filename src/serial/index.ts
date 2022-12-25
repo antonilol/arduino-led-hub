@@ -22,7 +22,7 @@
 
 import * as fs from 'fs';
 import { SerialPort } from 'serialport';
-import { config } from '../config';
+import config from '../config';
 
 import { logData, logMessage } from './log';
 

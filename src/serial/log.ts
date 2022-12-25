@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import { config } from '../config';
+import config from '../config';
 
 const chars = {
 	arrowUp: '\u2191',

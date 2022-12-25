@@ -59,4 +59,5 @@ function mergeConfig(user: any, def: any, value = 'config'): any {
 const userConfig = JSON.parse(readFileSync('config.json').toString());
 const exampleConfig = JSON.parse(readFileSync('example_config.json').toString());
 
-export const config = Object.freeze(mergeConfig(userConfig, exampleConfig) as Config);
+const config = Object.freeze(mergeConfig(userConfig, exampleConfig) as Config);
+export default config;
