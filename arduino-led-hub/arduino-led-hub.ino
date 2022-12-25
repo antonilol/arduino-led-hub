@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+#include <limits.h>
+
 // compiles code needed for the ledstrip. comment out to disable
 #define ENABLE_LEDSTRIP
 // compiles code needed for the multiplexed display. comment out to disable
@@ -36,7 +38,12 @@
 #include <FastLED.h>
 #endif
 
-#define serial_trash_bytes(n) for (u8 i = 0; i < n; i++){ Serial.read(); }
+#define serial_trash_bytes(n)                                                                      \
+  do {                                                                                             \
+    for (u8 i = 0; i < n; i++) {                                                                   \
+      Serial.read();                                                                               \
+    }                                                                                              \
+  } while (0)
 
 // message types
 // type is always 1 byte, followed by a certain amount of data (type specific)
@@ -73,10 +80,7 @@ enum msg_types {
 };
 
 // display settings
-#define freq 120
-// too low frequency will cause delayMicroseconds to be overflowed
-// for frequencies lower than 15.2597 Hz, uncomment the following line             1000000 / 16383 / DISPLAYS = 15.2597
-#define MICROTIME
+#define DISPLAY_MULTIPLEX_FREQUENCY 120
 
 // number of displays
 #define DISPLAYS 4
@@ -86,11 +90,11 @@ enum msg_types {
 #define NUM_LEDS (9 + 16 + 9 + 16 + 5)
 
 #ifdef ENABLE_DISPLAY
-// pin numbers of negative (ground) pins
-const u8 displayPins[DISPLAYS] = {5, A3, 6, A2}; // 5=the most left display, A2=the most right one
+// pin numbers of ground pins, from left to right
+const u8 displayPins[DISPLAYS] = {5, A3, 6, A2};
 
-// pin numbers of positive pins of segments
-const u8 segmentPins[8] = {A0, 8, 2, 4, A4, A1, 7, 3}; // a-g, dp
+// pin numbers of positive pins for the segments a to g and the decimal separator
+const u8 segmentPins[8] = {A0, 8, 2, 4, A4, A1, 7, 3};
 
 u8 disps[DISPLAYS] = {0};
 #endif
@@ -111,7 +115,7 @@ void setup() {
   Serial.begin(BAUD_RATE);
 
 #ifdef ENABLE_LEDSTRIP
-  FastLED.addLeds<WS2812, LEDSTRIP_PIN, RGB>((CRGB *) ledstrip, FASTLED_NUM_LEDS);
+  FastLED.addLeds<WS2812, LEDSTRIP_PIN, RGB>((CRGB *)ledstrip, FASTLED_NUM_LEDS);
 #ifdef FADE_IN_ON_BOOT
   for (u8 i = 0; i < 0x3f; i++) {
     memset(&ledstrip, i + 1, 150);
@@ -137,11 +141,14 @@ void setup() {
 }
 
 bool type_received = 0;
-bool incomplete = 0; // data bytes are not completely read because they were unavailable
+// data bytes are not completely read because they were unavailable
+// needed for messages that do not fit in the 64 bytes serial buffer
+// MSG_RECVD is sent in between the fragments
+bool incomplete = 0;
 u8 type;
 u8 ledstrip_msg[4];
 // points to the led number in a received message
-#define LED_N_POINTER ((u16 *) (ledstrip_msg))
+#define LED_N_POINTER ((u16 *)(ledstrip_msg))
 // only for SET_LEDS_RGB{,W}
 // points to the amount of leds in a received message
 #define LED_L_POINTER (ledstrip_msg + 2)
@@ -167,11 +174,11 @@ void loop() {
     } else
 #endif
 #ifdef ENABLE_LEDSTRIP
-    if (type == LEDSTRIP_SET_LED_RGB) {
+        if (type == LEDSTRIP_SET_LED_RGB) {
       if (Serial.available() >= 5) {
         Serial.readBytes(ledstrip_msg, 2);
         if (*LED_N_POINTER < NUM_LEDS) {
-          Serial.readBytes((u8 *) (ledstrip + *LED_N_POINTER), 3);
+          Serial.readBytes((u8 *)(ledstrip + *LED_N_POINTER), 3);
           FastLED.show();
         }
         Serial.write(MSG_RECVD);
@@ -232,7 +239,7 @@ void loop() {
             break;
           }
           if (*LED_N_POINTER < NUM_LEDS) {
-            Serial.readBytes((u8 *) (ledstrip + *LED_N_POINTER), 3);
+            Serial.readBytes((u8 *)(ledstrip + *LED_N_POINTER), 3);
           } else {
             serial_trash_bytes(3);
           }
@@ -265,7 +272,7 @@ void loop() {
             break;
           }
           if (*LED_N_POINTER < NUM_LEDS) {
-            Serial.readBytes((u8 *) (ledstrip + *LED_N_POINTER), 4);
+            Serial.readBytes((u8 *)(ledstrip + *LED_N_POINTER), 4);
           } else {
             serial_trash_bytes(4);
           }
@@ -285,6 +292,9 @@ void loop() {
 
 #ifdef ENABLE_DISPLAY
   // update displays
+  // TODO more accurate timing with micros() than with delays
+  // when working with microseconds the execution time of
+  // the code itself has to be taken into account
   for (u8 i = 0; i < DISPLAYS; i++) {
     digitalWrite(displayPins[i], 0);
     for (u8 j = 0; j < 8; j++) {
@@ -292,10 +302,11 @@ void loop() {
         digitalWrite(segmentPins[j], 1);
       }
     }
-#ifdef MICROTIME
-    delayMicroseconds(1000000 / freq / DISPLAYS);
+#define DELAY_PER_DISPLAY (1000000UL / DISPLAY_MULTIPLEX_FREQUENCY / DISPLAYS)
+#if DELAY_PER_DISPLAY < UINT_MAX
+    delayMicroseconds(DELAY_PER_DISPLAY);
 #else
-    delay(1000 / freq / DISPLAYS);
+    delay(DELAY_PER_DISPLAY / 1000);
 #endif
     for (u8 j = 0; j < 8; j++) {
       digitalWrite(segmentPins[j], 0);
@@ -304,10 +315,11 @@ void loop() {
   }
 #else
   // the same delay as with ENABLE_DISPLAY
-#ifdef MICROTIME
-  delayMicroseconds(1000000 / freq);
+#define DELAY (1000000UL / DISPLAY_MULTIPLEX_FREQUENCY / DISPLAYS)
+#ifdef DELAY < UINT_MAX
+  delayMicroseconds(1000000 / DISPLAY_MULTIPLEX_FREQUENCY);
 #else
-  delay(1000 / freq);
+  delay(1000 / DISPLAY_MULTIPLEX_FREQUENCY);
 #endif
 #endif
 }
