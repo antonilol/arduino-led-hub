@@ -46,16 +46,11 @@ function checkParams<R extends string, O extends string>(
 	}
 }
 
-function successAndSend(res: ServerResponse, msg: Buffer | Buffer[], block: boolean): void {
-	res.writeHead(200);
-	res.write(`Success\n`);
-
-	if (block) {
-		sendBytes(msg, () => res.end());
-	} else {
-		sendBytes(msg);
-		res.end();
-	}
+function successAndSend(res: ServerResponse, msg: Buffer | Buffer[]): void {
+	sendBytes(msg, () => {
+		res.writeHead(200);
+		res.end(`Success\n`);
+	});
 }
 
 export default class HttpServer implements Server {
@@ -80,7 +75,7 @@ export default class HttpServer implements Server {
 					case 'setLedRGB':
 					case 'setLedRGBW': {
 						const rgbw = args[0] === 'setLedRGBW';
-						checkParams(params, rgbw ? [ 'n', 'r', 'g', 'b', 'w' ] : [ 'n', 'r', 'g', 'b' ], [ 'block' ]);
+						checkParams(params, rgbw ? [ 'n', 'r', 'g', 'b', 'w' ] : [ 'n', 'r', 'g', 'b' ], []);
 						let msg: Buffer;
 						if (rgbw) {
 							msg = ledstrip.setLedRGBWMsg(
@@ -98,13 +93,13 @@ export default class HttpServer implements Server {
 								parseInt(params.b)
 							);
 						}
-						successAndSend(res, msg, params.block !== undefined);
+						successAndSend(res, msg);
 						break;
 					}
 					case 'fillRGB':
 					case 'fillRGBW': {
 						const rgbw = args[0] === 'fillRGBW';
-						checkParams(params, rgbw ? [ 'r', 'g', 'b', 'w' ] : [ 'r', 'g', 'b' ], [ 'block' ]);
+						checkParams(params, rgbw ? [ 'r', 'g', 'b', 'w' ] : [ 'r', 'g', 'b' ], []);
 						let msg: Buffer;
 						if (rgbw) {
 							msg = ledstrip.fillRGBWMsg(
@@ -116,13 +111,13 @@ export default class HttpServer implements Server {
 						} else {
 							msg = ledstrip.fillRGBMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b));
 						}
-						successAndSend(res, msg, params.block !== undefined);
+						successAndSend(res, msg);
 						break;
 					}
 					case 'setLedsRGB':
 					case 'setLedsRGBW': {
 						const rgbw = args[0] === 'setLedsRGBW';
-						checkParams(params, [ 'data' ], [ 'start', 'block' ]);
+						checkParams(params, [ 'data' ], [ 'start' ]);
 						const data = JSON.parse(params.data);
 						if (!Array.isArray(data)) {
 							throw new Error(`Query string parameter "data" must be an array\n`);
@@ -137,16 +132,16 @@ export default class HttpServer implements Server {
 						} else {
 							msgs = ledstrip.setLedsRGBMsgs(start, data);
 						}
-						successAndSend(res, msgs, params.block !== undefined);
+						successAndSend(res, msgs);
 						break;
 					}
 					case 'displayNumber': {
-						checkParams(params, [ 'n' ], [ 'maxdecimals', 'block' ]);
+						checkParams(params, [ 'n' ], [ 'maxdecimals' ]);
 						const msg = display.updateDisplayFloatMsg(
 							Number(params.n),
 							params.maxdecimals ? parseInt(params.maxdecimals) : 4
 						);
-						successAndSend(res, msg, params.block !== undefined);
+						successAndSend(res, msg);
 						break;
 					}
 					default:
