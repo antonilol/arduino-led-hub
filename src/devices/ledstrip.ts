@@ -1,3 +1,9 @@
+const arduinoRXBufferSize = 64;
+// message header size: 4, bytes per color: 3
+const maxRGBPerMsg = Math.floor((arduinoRXBufferSize - 4) / 3);
+// message header size: 4, bytes per color: 4
+const maxRGBWPerMsg = Math.floor((arduinoRXBufferSize - 4) / 4);
+
 const msgType = {
 	SET_LED_RGB: 1,
 	SET_LED_RGBW: 4,
@@ -50,7 +56,7 @@ function setLedsMsgFrag(start: number, data: RGB[] | RGBW[]): Buffer {
 
 export function setLedsMsgs(start: number, data: RGB[] | RGBW[]): Buffer[] {
 	const msgs: Buffer[] = [];
-	const colorsPerMsg = 'w' in data[0] ? 15 : 20;
+	const colorsPerMsg = 'w' in data[0] ? maxRGBWPerMsg : maxRGBPerMsg;
 	for (let i = 0; i < data.length; i += colorsPerMsg) {
 		msgs.push(setLedsMsgFrag(start + i, data.slice(i, i + colorsPerMsg)));
 	}
