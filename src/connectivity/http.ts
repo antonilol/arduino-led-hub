@@ -2,6 +2,7 @@ import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { URL, URLSearchParams } from 'url';
 import { Server } from '.';
 import * as ledstrip from '../devices/ledstrip';
+import * as display from '../devices/display';
 import { sendBytes } from '../serial';
 import { join } from '../util';
 
@@ -139,9 +140,19 @@ export default class HttpServer implements Server {
 						successAndSend(res, msgs, params.block !== undefined);
 						break;
 					}
+					case 'displayNumber': {
+						checkParams(params, [ 'n' ], [ 'maxdecimals', 'block' ]);
+						const msg = display.updateDisplayFloatMsg(
+							Number(params.n),
+							params.maxdecimals ? parseInt(params.maxdecimals) : 4
+						);
+						successAndSend(res, msg, params.block !== undefined);
+						break;
+					}
 					default:
 						res.writeHead(404);
 						res.end('Not Found\n');
+						break;
 				}
 			} else {
 				res.writeHead(404);
