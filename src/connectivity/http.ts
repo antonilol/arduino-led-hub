@@ -125,13 +125,8 @@ export default class HttpServer implements Server {
 						for (let i = 0; i < data.length; i++) {
 							checkParams(data[i], rgbw ? [ 'r', 'g', 'b', 'w' ] : [ 'r', 'g', 'b' ], [], `in data[${i}]`);
 						}
-						let msgs: Buffer[];
 						const start = params.start === undefined ? 0 : parseInt(params.start);
-						if (rgbw) {
-							msgs = ledstrip.setLedsRGBWMsgs(start, data);
-						} else {
-							msgs = ledstrip.setLedsRGBMsgs(start, data);
-						}
+						const msgs = ledstrip.setLedsMsgs(start, data);
 						successAndSend(res, msgs);
 						break;
 					}

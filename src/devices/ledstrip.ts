@@ -30,45 +30,29 @@ export function fillRGBWMsg(r: number, g: number, b: number, w: number): Buffer 
 type RGB = { r: number; g: number; b: number };
 type RGBW = RGB & { w: number };
 
-export function setLedsRGBMsgs(start: number, data: RGB[]): Buffer[] {
-	const msgs: Buffer[] = [];
-	let msg = Buffer.allocUnsafe(63);
-	msg.writeUint8(msgType.SET_LEDS_RGB, 0);
+function setLedsMsgFrag(start: number, data: RGB[] | RGBW[]): Buffer {
+	const rgbw = 'w' in data[0];
+	const msg = Buffer.allocUnsafe(4 + (rgbw ? 4 : 3) * data.length);
+	msg.writeUint8(rgbw ? msgType.SET_LEDS_RGBW : msgType.SET_LEDS_RGB, 0);
 	msg.writeUint16LE(start, 1);
 	msg.writeUint8(data.length, 3);
 	let p = 4;
 	for (const d of data) {
-		if (p + 3 > 63) {
-			msgs.push(msg.subarray(0, p));
-			msg = Buffer.allocUnsafe(63);
-			p = 0;
-		}
 		msg.writeUint8(d.g, p++);
 		msg.writeUint8(d.r, p++);
 		msg.writeUint8(d.b, p++);
+		if (rgbw) {
+			msg.writeUint8((d as RGBW).w, p++);
+		}
 	}
-	msgs.push(msg.subarray(0, p));
-	return msgs;
+	return msg;
 }
 
-export function setLedsRGBWMsgs(start: number, data: RGBW[]): Buffer[] {
+export function setLedsMsgs(start: number, data: RGB[] | RGBW[]): Buffer[] {
 	const msgs: Buffer[] = [];
-	let msg = Buffer.allocUnsafe(63);
-	msg.writeUint8(msgType.SET_LEDS_RGBW, 0);
-	msg.writeUint16LE(start, 1);
-	msg.writeUint8(data.length, 3);
-	let p = 4;
-	for (const d of data) {
-		if (p + 4 > 63) {
-			msgs.push(msg.subarray(0, p));
-			msg = Buffer.allocUnsafe(63);
-			p = 0;
-		}
-		msg.writeUint8(d.g, p++);
-		msg.writeUint8(d.r, p++);
-		msg.writeUint8(d.b, p++);
-		msg.writeUint8(d.w, p++);
+	const colorsPerMsg = 'w' in data[0] ? 15 : 20;
+	for (let i = 0; i < data.length; i += colorsPerMsg) {
+		msgs.push(setLedsMsgFrag(start + i, data.slice(i, i + colorsPerMsg)));
 	}
-	msgs.push(msg.subarray(0, p));
 	return msgs;
 }

@@ -1,29 +1,7 @@
-/*
- * Copyright (c) 2021 - 2022 Antoni Spaanderman
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
+#include <Arduino.h>
+#include <FastLED.h>
 #include <limits.h>
 
-// compiles code needed for the ledstrip. comment out to disable
-#define ENABLE_LEDSTRIP
 // compiles code needed for the multiplexed display. comment out to disable
 #define ENABLE_DISPLAY
 // use an RGBW ledstrip instead of RGB. uncomment to enable
@@ -33,10 +11,6 @@
 
 // make sure to have the exact same rate on the host
 #define BAUD_RATE 9600
-
-#ifdef ENABLE_LEDSTRIP
-#include <FastLED.h>
-#endif
 
 #define serial_trash_bytes(n)                                                                      \
   do {                                                                                             \
@@ -79,17 +53,19 @@ enum msg_types {
   LEDSTRIP_FILL_RGBW = 9
 };
 
-// display settings
-#define DISPLAY_MULTIPLEX_FREQUENCY 120
-
-// number of displays
-#define DISPLAYS 4
-
 // ledstrip settings
 #define LEDSTRIP_PIN 10
 #define NUM_LEDS (9 + 16 + 9 + 16 + 5)
 
 #ifdef ENABLE_DISPLAY
+// display settings
+
+// number of displays
+#define DISPLAYS 4
+
+// frequency
+#define DISPLAY_MULTIPLEX_FREQUENCY 120
+
 // pin numbers of ground pins, from left to right
 const u8 displayPins[DISPLAYS] = {5, A3, 6, A2};
 
@@ -107,14 +83,11 @@ u8 disps[DISPLAYS] = {0};
 #define FASTLED_NUM_LEDS NUM_LEDS
 #endif
 
-#ifdef ENABLE_LEDSTRIP
 u8 ledstrip[NUM_LEDS][LED_BYTES] = {0};
-#endif
 
 void setup() {
   Serial.begin(BAUD_RATE);
 
-#ifdef ENABLE_LEDSTRIP
   FastLED.addLeds<WS2812, LEDSTRIP_PIN, RGB>((CRGB *)ledstrip, FASTLED_NUM_LEDS);
 #ifdef FADE_IN_ON_BOOT
   for (u8 i = 0; i < 0x3f; i++) {
@@ -122,7 +95,6 @@ void setup() {
     FastLED.show();
     delay(32);
   }
-#endif
 #endif
 
 #ifdef ENABLE_DISPLAY
@@ -141,22 +113,19 @@ void setup() {
 }
 
 bool type_received = 0;
-// data bytes are not completely read because they were unavailable
-// needed for messages that do not fit in the 64 bytes serial buffer
-// MSG_RECVD is sent in between the fragments
-bool incomplete = 0;
 u8 type;
+// when reading messages where the total length is not known
+// before reading the header, the message could be read in 2 parts
+// in between the 2 parts `header_received` and `type_received` are true (1)
+bool header_received = 0;
 u8 ledstrip_msg[4];
 // points to the led number in a received message
-#define LED_N_POINTER ((u16 *)(ledstrip_msg))
+#define ledstrip_msg_start (*((u16 *)(ledstrip_msg)))
 // only for SET_LEDS_RGB{,W}
 // points to the amount of leds in a received message
-#define LED_L_POINTER (ledstrip_msg + 2)
-u8 sent;
-bool waiting = 0;
+#define ledstrip_msg_length (*(ledstrip_msg + 2))
 
 void loop() {
-  // read serial
   if (!type_received) {
     if (Serial.available() >= 1) {
       Serial.readBytes(&type, 1);
@@ -164,129 +133,104 @@ void loop() {
     }
   }
   if (type_received) {
-#ifdef ENABLE_DISPLAY
-    if (type == DISPLAY_WRITE) {
+    switch (type) {
+    case DISPLAY_WRITE:
       if (Serial.available() >= 4) {
+#ifdef ENABLE_DISPLAY
         Serial.readBytes(disps, 4);
+#else
+        serial_trash_bytes(4);
+#endif
         Serial.write(MSG_RECVD);
         type_received = 0;
       }
-    } else
-#endif
-#ifdef ENABLE_LEDSTRIP
-        if (type == LEDSTRIP_SET_LED_RGB) {
+      break;
+    case LEDSTRIP_SET_LED_RGB:
       if (Serial.available() >= 5) {
         Serial.readBytes(ledstrip_msg, 2);
-        if (*LED_N_POINTER < NUM_LEDS) {
-          Serial.readBytes((u8 *)(ledstrip + *LED_N_POINTER), 3);
+        if (ledstrip_msg_start < NUM_LEDS) {
+          Serial.readBytes((u8 *)(ledstrip + ledstrip_msg_start), 3);
           FastLED.show();
         }
         Serial.write(MSG_RECVD);
         type_received = 0;
       }
-    } else if (type == LEDSTRIP_FILL_RGB) {
+      break;
+    case LEDSTRIP_FILL_RGB:
       if (Serial.available() >= 3) {
         Serial.readBytes(ledstrip_msg, 3);
-        for (int i = 0; i < NUM_LEDS; i++) {
+        for (u16 i = 0; i < NUM_LEDS; i++) {
           memcpy(ledstrip + i, ledstrip_msg, 3);
         }
         FastLED.show();
         Serial.write(MSG_RECVD);
         type_received = 0;
       }
-    } else if (type == LEDSTRIP_FILL_RGBW) {
+      break;
+    case LEDSTRIP_FILL_RGBW:
       if (Serial.available() >= 4) {
         Serial.readBytes(ledstrip_msg, 4);
-        for (int i = 0; i < NUM_LEDS; i++) {
+        for (u16 i = 0; i < NUM_LEDS; i++) {
           memcpy(ledstrip + i, ledstrip_msg, 4);
         }
         FastLED.show();
         Serial.write(MSG_RECVD);
         type_received = 0;
       }
-    } else if (type == LEDSTRIP_CLEAR) {
+      break;
+    case LEDSTRIP_CLEAR:
       memset(ledstrip, 0x00, LED_BYTES * NUM_LEDS);
       FastLED.show();
       Serial.write(MSG_RECVD);
       type_received = 0;
-    } else if (type == LEDSTRIP_SET_LED_RGBW) {
+      break;
+    case LEDSTRIP_SET_LED_RGBW:
       if (Serial.available() >= 6) {
-        serial_trash_bytes(6);
-        // unimplemented
+        Serial.readBytes(ledstrip_msg, 2);
+        if (ledstrip_msg_start < NUM_LEDS) {
+          Serial.readBytes((u8 *)(ledstrip + ledstrip_msg_start), 4);
+          FastLED.show();
+        }
         Serial.write(MSG_RECVD);
         type_received = 0;
       }
-    } else if (type == LEDSTRIP_SET_LEDS_RGB) {
-      if (Serial.available() >= 3) {
-        if (!incomplete) {
+      break;
+    case LEDSTRIP_SET_LEDS_RGB:
+      if (!header_received) {
+        if (Serial.available() >= 3) {
           Serial.readBytes(ledstrip_msg, 3);
-          sent = 0;
+          header_received = 1;
         }
-        while (1) {
-          if (*LED_L_POINTER == 0) {
-            incomplete = 0;
-            FastLED.show();
-            Serial.write(MSG_RECVD);
-            type_received = 0;
-            break;
-          }
-          if (Serial.available() < 3) {
-            incomplete = 1;
-            if (!waiting && (sent % 21 == 19)) {
-              Serial.write(MSG_RECVD);
-              waiting = 1;
-            }
-            break;
-          }
-          if (*LED_N_POINTER < NUM_LEDS) {
-            Serial.readBytes((u8 *)(ledstrip + *LED_N_POINTER), 3);
-          } else {
-            serial_trash_bytes(3);
-          }
-          (*LED_N_POINTER)++;
-          (*LED_L_POINTER)--;
-          sent++;
-          waiting = 0;
+      } else {
+        if (Serial.available() >= ledstrip_msg_length * 3) {
+          Serial.readBytes((u8 *)(ledstrip + ledstrip_msg_start), ledstrip_msg_length * 3);
+          FastLED.show();
+          header_received = 0;
+          Serial.write(MSG_RECVD);
+          type_received = 0;
         }
       }
-    } else if (type == LEDSTRIP_SET_LEDS_RGBW) {
-      if (Serial.available() >= 3) {
-        if (!incomplete) {
+      break;
+    case LEDSTRIP_SET_LEDS_RGBW:
+      if (!header_received) {
+        if (Serial.available() >= 3) {
           Serial.readBytes(ledstrip_msg, 3);
-          sent = 0;
+          header_received = 1;
         }
-        while (1) {
-          if (*LED_L_POINTER == 0) {
-            incomplete = 0;
-            FastLED.show();
-            Serial.write(MSG_RECVD);
-            type_received = 0;
-            break;
-          }
-          if (Serial.available() < 4) {
-            incomplete = 1;
-            if (!waiting && (sent % 15 == 14)) {
-              Serial.write(MSG_RECVD);
-              waiting = 1;
-            }
-            break;
-          }
-          if (*LED_N_POINTER < NUM_LEDS) {
-            Serial.readBytes((u8 *)(ledstrip + *LED_N_POINTER), 4);
-          } else {
-            serial_trash_bytes(4);
-          }
-          (*LED_N_POINTER)++;
-          (*LED_L_POINTER)--;
-          sent++;
-          waiting = 0;
+      } else {
+        if (Serial.available() >= ledstrip_msg_length * 4) {
+          Serial.readBytes((u8 *)(ledstrip + ledstrip_msg_start), ledstrip_msg_length * 4);
+          FastLED.show();
+          header_received = 0;
+          Serial.write(MSG_RECVD);
+          type_received = 0;
         }
       }
-    } else
-#endif
-    {
+      break;
+    default:
       Serial.write(MSG_RECVD);
       type_received = 0;
+      break;
     }
   }
 
@@ -313,13 +257,5 @@ void loop() {
     }
     digitalWrite(displayPins[i], 1);
   }
-#else
-  // the same delay as with ENABLE_DISPLAY
-#define DELAY (1000000UL / DISPLAY_MULTIPLEX_FREQUENCY / DISPLAYS)
-#ifdef DELAY < UINT_MAX
-  delayMicroseconds(1000000 / DISPLAY_MULTIPLEX_FREQUENCY);
-#else
-  delay(1000 / DISPLAY_MULTIPLEX_FREQUENCY);
-#endif
 #endif
 }
