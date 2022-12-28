@@ -2,15 +2,7 @@
 #include <FastLED.h>
 #include <limits.h>
 
-// compiles code needed for the multiplexed display. comment out to disable
-#define ENABLE_DISPLAY
-// use an RGBW ledstrip instead of RGB. uncomment to enable
-// #define RGBW
-
-#define FADE_IN_ON_BOOT
-
-// make sure to have the exact same rate on the host
-#define BAUD_RATE 9600
+#include "config.h"
 
 #define serial_trash_bytes(n)                                                                      \
   do {                                                                                             \
@@ -53,19 +45,7 @@ enum msg_types {
   LEDSTRIP_FILL_RGBW = 9
 };
 
-// ledstrip settings
-#define LEDSTRIP_PIN 10
-#define NUM_LEDS (9 + 16 + 9 + 16 + 5)
-
 #ifdef ENABLE_DISPLAY
-// display settings
-
-// number of displays
-#define DISPLAYS 4
-
-// frequency
-#define DISPLAY_MULTIPLEX_FREQUENCY 120
-
 // pin numbers of ground pins, from left to right
 const u8 displayPins[DISPLAYS] = {5, A3, 6, A2};
 
@@ -91,7 +71,7 @@ void setup() {
   FastLED.addLeds<WS2812, LEDSTRIP_PIN, RGB>((CRGB *)ledstrip, FASTLED_NUM_LEDS);
 #ifdef FADE_IN_ON_BOOT
   for (u8 i = 0; i < 0x3f; i++) {
-    memset(&ledstrip, i + 1, 150);
+    memset(&ledstrip, i + 1, 50 * LED_BYTES);
     FastLED.show();
     delay(32);
   }

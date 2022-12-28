@@ -5,8 +5,9 @@
     "start": "node dist/index",
     "dev": "tsc && node dist/index",
     "format": "prettier --write src",
+    "format_arduino": "cd arduino-led-hub; clang-format -i *.ino *.h",
     "lint": "eslint --fix --max-warnings 0 src",
-    "precommit": "npm run format && npm run lint && npm run build"
+    "precommit": "npm run format && npm run lint && npm run build && npm run format_arduino"
   },
   "dependencies": {
     "@types/node": "^18.6.3",
