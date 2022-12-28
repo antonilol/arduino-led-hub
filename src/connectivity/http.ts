@@ -2,7 +2,7 @@ import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { URL, URLSearchParams } from 'url';
 import { Server } from '.';
 import { ledstrip, display } from '../devices';
-import { sendBytes } from '../serial';
+import { queueSerialMessage } from '../serial';
 import { join } from '../util';
 import { readFileSync } from 'fs';
 import config from '../config';
@@ -47,13 +47,6 @@ function checkParams<R extends string, O extends string>(
 	}
 }
 
-function successAndSend(res: ServerResponse, msg: Buffer | Buffer[]): void {
-	sendBytes(msg, () => {
-		res.writeHead(200);
-		res.end(`Success\n`);
-	});
-}
-
 export default class HttpServer implements Server {
 	private socket: string | number;
 
@@ -76,7 +69,7 @@ export default class HttpServer implements Server {
 		console.log(`http server listening on ${this.socket}`);
 	}
 
-	requestListener(req: IncomingMessage, res: ServerResponse) {
+	async requestListener(req: IncomingMessage, res: ServerResponse) {
 		try {
 			const url = new URL(`http://localhost/${req.url}`);
 			const args = url.pathname.split('/').filter(x => x.trim());
@@ -90,40 +83,40 @@ export default class HttpServer implements Server {
 					case 'setLedRGBW': {
 						const rgbw = args[0] === 'setLedRGBW';
 						checkParams(params, rgbw ? [ 'n', 'r', 'g', 'b', 'w' ] : [ 'n', 'r', 'g', 'b' ], []);
-						let msg: Buffer;
 						if (rgbw) {
-							msg = ledstrip.setLedRGBWMsg(parseInt(params.n), {
+							await ledstrip.setLedRGBW(parseInt(params.n), {
 								r: parseInt(params.r),
 								g: parseInt(params.g),
 								b: parseInt(params.b),
 								w: parseInt(params.w)
 							});
 						} else {
-							msg = ledstrip.setLedRGBMsg(parseInt(params.n), {
+							await ledstrip.setLedRGB(parseInt(params.n), {
 								r: parseInt(params.r),
 								g: parseInt(params.g),
 								b: parseInt(params.b)
 							});
 						}
-						successAndSend(res, msg);
+						res.writeHead(200);
+						res.end(`Success\n`);
 						break;
 					}
 					case 'fillRGB':
 					case 'fillRGBW': {
 						const rgbw = args[0] === 'fillRGBW';
 						checkParams(params, rgbw ? [ 'r', 'g', 'b', 'w' ] : [ 'r', 'g', 'b' ], []);
-						let msg: Buffer;
 						if (rgbw) {
-							msg = ledstrip.fillRGBWMsg({
+							await ledstrip.fillRGBW({
 								r: parseInt(params.r),
 								g: parseInt(params.g),
 								b: parseInt(params.b),
 								w: parseInt(params.w)
 							});
 						} else {
-							msg = ledstrip.fillRGBMsg({ r: parseInt(params.r), g: parseInt(params.g), b: parseInt(params.b) });
+							await ledstrip.fillRGB({ r: parseInt(params.r), g: parseInt(params.g), b: parseInt(params.b) });
 						}
-						successAndSend(res, msg);
+						res.writeHead(200);
+						res.end(`Success\n`);
 						break;
 					}
 					case 'setLedsRGB':
@@ -138,27 +131,27 @@ export default class HttpServer implements Server {
 							checkParams(data[i], rgbw ? [ 'r', 'g', 'b', 'w' ] : [ 'r', 'g', 'b' ], [], `in data[${i}]`);
 						}
 						const start = params.start === undefined ? 0 : parseInt(params.start);
-						const msgs = ledstrip.setLedsMsgs(start, data);
-						successAndSend(res, msgs);
+						await ledstrip.setLeds(start, data);
+						res.writeHead(200);
+						res.end(`Success\n`);
 						break;
 					}
 					case 'displayNumber': {
 						checkParams(params, [ 'n' ], [ 'maxdecimals' ]);
-						const msg = display.updateDisplayFloatMsg(
-							Number(params.n),
-							params.maxdecimals ? parseInt(params.maxdecimals) : 4
-						);
-						successAndSend(res, msg);
+						await display.updateDisplayFloat(Number(params.n), params.maxdecimals ? parseInt(params.maxdecimals) : 4);
+						res.writeHead(200);
+						res.end(`Success\n`);
 						break;
 					}
 					default:
 						res.writeHead(404);
 						res.end('Not Found\n');
-						break;
+						return;
 				}
 			} else {
 				res.writeHead(404);
 				res.end('Not Found\n');
+				return;
 			}
 		} catch (e) {
 			res.writeHead(400);

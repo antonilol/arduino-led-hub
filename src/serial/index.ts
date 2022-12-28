@@ -27,17 +27,23 @@ const RECVD = 5;
 
 let ready = false;
 
-const queue: { b: Buffer; onSent?: () => void }[] = [];
+const queue: { b: Buffer; callback?: () => void }[] = [];
 
-export function sendBytes(b: Buffer | Buffer[], onSent?: () => void): void {
-	if (Array.isArray(b)) {
-		for (let i = 0; i < b.length; i++) {
-			queue.push({ b: b[i], onSent: b.length - 1 === i ? onSent : undefined });
+/** Queue a new message for the serial port. It will be sent as soon as the port is ready.
+ * Resolves when the receiver confirms receipt of the message, or the last message of the list.
+ * Messages are sent in the order they were queued, first in (queued) first out (sent).
+ */
+export function queueSerialMessage(b: Buffer | Buffer[]): Promise<void> {
+	return new Promise(resolve => {
+		if (Array.isArray(b)) {
+			for (let i = 0; i < b.length; i++) {
+				queue.push({ b: b[i], callback: b.length - 1 === i ? resolve : undefined });
+			}
+		} else {
+			queue.push({ b, callback: resolve });
 		}
-	} else {
-		queue.push({ b, onSent });
-	}
-	trySend();
+		trySend();
+	});
 }
 
 function trySend() {
@@ -52,8 +58,8 @@ function trySend() {
 
 	logData(device, false, q.b);
 	port.write(q.b);
-	if (q.onSent) {
-		q.onSent();
+	if (q.callback) {
+		q.callback();
 	}
 	ready = false;
 }

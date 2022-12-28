@@ -1,3 +1,4 @@
+import { queueSerialMessage } from '../serial';
 import msgType from './msgtype';
 
 const arduinoRXBufferSize = 63;
@@ -9,24 +10,24 @@ const maxRGBWPerMsg = Math.floor((arduinoRXBufferSize - 4) / 4);
 type RGB = { r: number; g: number; b: number };
 type RGBW = RGB & { w: number };
 
-export function setLedRGBMsg(n: number, { r, g, b }: RGB): Buffer {
+export async function setLedRGB(n: number, { r, g, b }: RGB): Promise<void> {
 	const msg = Buffer.from([ msgType.SET_LED_RGB, 0, 0, g, r, b ]);
 	msg.writeUint16LE(n, 1);
-	return msg;
+	await queueSerialMessage(msg);
 }
 
-export function setLedRGBWMsg(n: number, { r, g, b, w }: RGBW): Buffer {
+export async function setLedRGBW(n: number, { r, g, b, w }: RGBW): Promise<void> {
 	const msg = Buffer.from([ msgType.SET_LED_RGBW, 0, 0, g, r, b, w ]);
 	msg.writeUint16LE(n, 1);
-	return msg;
+	await queueSerialMessage(msg);
 }
 
-export function fillRGBMsg({ r, g, b }: RGB): Buffer {
-	return Buffer.from([ msgType.FILL_RGB, g, r, b ]);
+export async function fillRGB({ r, g, b }: RGB): Promise<void> {
+	await queueSerialMessage(Buffer.from([ msgType.FILL_RGB, g, r, b ]));
 }
 
-export function fillRGBWMsg({ r, g, b, w }: RGBW): Buffer {
-	return Buffer.from([ msgType.FILL_RGB, g, r, b, w ]);
+export async function fillRGBW({ r, g, b, w }: RGBW): Promise<void> {
+	await queueSerialMessage(Buffer.from([ msgType.FILL_RGBW, g, r, b, w ]));
 }
 
 function setLedsMsgFrag(start: number, data: RGB[] | RGBW[]): Buffer {
@@ -47,11 +48,11 @@ function setLedsMsgFrag(start: number, data: RGB[] | RGBW[]): Buffer {
 	return msg;
 }
 
-export function setLedsMsgs(start: number, data: RGB[] | RGBW[]): Buffer[] {
+export async function setLeds(start: number, data: RGB[] | RGBW[]): Promise<void> {
 	const msgs: Buffer[] = [];
 	const colorsPerMsg = 'w' in data[0] ? maxRGBWPerMsg : maxRGBPerMsg;
 	for (let i = 0; i < data.length; i += colorsPerMsg) {
 		msgs.push(setLedsMsgFrag(start + i, data.slice(i, i + colorsPerMsg)));
 	}
-	return msgs;
+	await queueSerialMessage(msgs);
 }

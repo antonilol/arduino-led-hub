@@ -1,3 +1,4 @@
+import { queueSerialMessage } from '../serial';
 import msgType from './msgtype';
 
 /** defines if segments a (1<<0) to g (1<<6) are turned on for a number from 0 to 9 (the index)
@@ -7,7 +8,7 @@ const display7seg = [ 63, 6, 91, 79, 102, 109, 125, 7, 127, 111 ];
 const decimalSeparator = 1 << 7;
 
 // TODO fix inconsistent rounding
-export function updateDisplayFloatMsg(n: number, maxdecimals: number): Buffer {
+export async function updateDisplayFloat(n: number, maxdecimals: number): Promise<void> {
 	const [ intPart, floatPart ] = n.toFixed(maxdecimals).split('.');
 	if (intPart.length > 4) {
 		throw new Error('Number too long');
@@ -20,5 +21,5 @@ export function updateDisplayFloatMsg(n: number, maxdecimals: number): Buffer {
 	if (intPart.length !== 4 && floatPart) {
 		msg[intPart.length] |= decimalSeparator;
 	}
-	return msg;
+	await queueSerialMessage(msg);
 }
