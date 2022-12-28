@@ -1,40 +1,33 @@
+import msgType from './msgtype';
+
 const arduinoRXBufferSize = 64;
 // message header size: 4, bytes per color: 3
 const maxRGBPerMsg = Math.floor((arduinoRXBufferSize - 4) / 3);
 // message header size: 4, bytes per color: 4
 const maxRGBWPerMsg = Math.floor((arduinoRXBufferSize - 4) / 4);
 
-const msgType = {
-	SET_LED_RGB: 1,
-	SET_LED_RGBW: 4,
-	SET_LEDS_RGB: 6,
-	SET_LEDS_RGBW: 7,
-	FILL_RGB: 8,
-	FILL_RGBW: 9
-} as const;
+type RGB = { r: number; g: number; b: number };
+type RGBW = RGB & { w: number };
 
-export function setLedRGBMsg(n: number, r: number, g: number, b: number): Buffer {
+export function setLedRGBMsg(n: number, { r, g, b }: RGB): Buffer {
 	const msg = Buffer.from([ msgType.SET_LED_RGB, 0, 0, g, r, b ]);
 	msg.writeUint16LE(n, 1);
 	return msg;
 }
 
-export function setLedRGBWMsg(n: number, r: number, g: number, b: number, w: number): Buffer {
+export function setLedRGBWMsg(n: number, { r, g, b, w }: RGBW): Buffer {
 	const msg = Buffer.from([ msgType.SET_LED_RGBW, 0, 0, g, r, b, w ]);
 	msg.writeUint16LE(n, 1);
 	return msg;
 }
 
-export function fillRGBMsg(r: number, g: number, b: number): Buffer {
+export function fillRGBMsg({ r, g, b }: RGB): Buffer {
 	return Buffer.from([ msgType.FILL_RGB, g, r, b ]);
 }
 
-export function fillRGBWMsg(r: number, g: number, b: number, w: number): Buffer {
+export function fillRGBWMsg({ r, g, b, w }: RGBW): Buffer {
 	return Buffer.from([ msgType.FILL_RGB, g, r, b, w ]);
 }
-
-type RGB = { r: number; g: number; b: number };
-type RGBW = RGB & { w: number };
 
 function setLedsMsgFrag(start: number, data: RGB[] | RGBW[]): Buffer {
 	const rgbw = 'w' in data[0];

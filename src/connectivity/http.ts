@@ -1,8 +1,7 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { URL, URLSearchParams } from 'url';
 import { Server } from '.';
-import * as ledstrip from '../devices/ledstrip';
-import * as display from '../devices/display';
+import { ledstrip, display } from '../devices';
 import { sendBytes } from '../serial';
 import { join } from '../util';
 
@@ -78,20 +77,18 @@ export default class HttpServer implements Server {
 						checkParams(params, rgbw ? [ 'n', 'r', 'g', 'b', 'w' ] : [ 'n', 'r', 'g', 'b' ], []);
 						let msg: Buffer;
 						if (rgbw) {
-							msg = ledstrip.setLedRGBWMsg(
-								parseInt(params.n),
-								parseInt(params.r),
-								parseInt(params.g),
-								parseInt(params.b),
-								parseInt(params.w)
-							);
+							msg = ledstrip.setLedRGBWMsg(parseInt(params.n), {
+								r: parseInt(params.r),
+								g: parseInt(params.g),
+								b: parseInt(params.b),
+								w: parseInt(params.w)
+							});
 						} else {
-							msg = ledstrip.setLedRGBMsg(
-								parseInt(params.n),
-								parseInt(params.r),
-								parseInt(params.g),
-								parseInt(params.b)
-							);
+							msg = ledstrip.setLedRGBMsg(parseInt(params.n), {
+								r: parseInt(params.r),
+								g: parseInt(params.g),
+								b: parseInt(params.b)
+							});
 						}
 						successAndSend(res, msg);
 						break;
@@ -102,14 +99,14 @@ export default class HttpServer implements Server {
 						checkParams(params, rgbw ? [ 'r', 'g', 'b', 'w' ] : [ 'r', 'g', 'b' ], []);
 						let msg: Buffer;
 						if (rgbw) {
-							msg = ledstrip.fillRGBWMsg(
-								parseInt(params.r),
-								parseInt(params.g),
-								parseInt(params.b),
-								parseInt(params.w)
-							);
+							msg = ledstrip.fillRGBWMsg({
+								r: parseInt(params.r),
+								g: parseInt(params.g),
+								b: parseInt(params.b),
+								w: parseInt(params.w)
+							});
 						} else {
-							msg = ledstrip.fillRGBMsg(parseInt(params.r), parseInt(params.g), parseInt(params.b));
+							msg = ledstrip.fillRGBMsg({ r: parseInt(params.r), g: parseInt(params.g), b: parseInt(params.b) });
 						}
 						successAndSend(res, msg);
 						break;

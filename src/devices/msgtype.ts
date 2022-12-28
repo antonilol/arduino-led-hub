@@ -1,0 +1,9 @@
+export default {
+	UPDATE_DISPLAY: 0,
+	SET_LED_RGB: 1,
+	SET_LED_RGBW: 4,
+	SET_LEDS_RGB: 6,
+	SET_LEDS_RGBW: 7,
+	FILL_RGB: 8,
+	FILL_RGBW: 9
+} as const;

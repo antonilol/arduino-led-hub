@@ -1,6 +1,4 @@
-const msgType = {
-	UPDATE_DISPLAY: 0
-} as const;
+import msgType from './msgtype';
 
 /** defines if segments a (1<<0) to g (1<<6) are turned on for a number from 0 to 9 (the index)
  * the decimal separator (1<<7) is unused here
