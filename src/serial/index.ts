@@ -22,8 +22,7 @@ export function initDevices() {
 	});
 }
 
-const CONNECTED = 3;
-const RECVD = 5;
+const READY = 0;
 
 let ready = false;
 
@@ -68,7 +67,7 @@ function onData(b: Buffer): void {
 	logData(device, true, b);
 	// for now
 	for (let i = 0; i < b.length; i++) {
-		if (b[i] === CONNECTED || b[i] === RECVD) {
+		if (b[i] === READY) {
 			ready = true;
 			trySend();
 		}
