@@ -53,11 +53,11 @@ enum msg_types {
   LEDSTRIP_FILL_RGBW = 9
 };
 
+u8 ledstrip[FASTLED_NUM_LEDS * 3] = {0};
+
 #ifdef ENABLE_DISPLAY
 u8 disps[DISPLAYS] = {0};
 #endif
-
-u8 ledstrip[NUM_LEDS][LED_BYTES] = {0};
 
 void setup() {
   Serial.begin(BAUD_RATE);
@@ -123,7 +123,7 @@ void loop() {
       if (Serial.available() >= 5) {
         Serial.readBytes(ledstrip_msg, 2);
         if (ledstrip_msg_start < NUM_LEDS) {
-          Serial.readBytes((u8 *)(ledstrip + ledstrip_msg_start), 3);
+          Serial.readBytes(ledstrip + ledstrip_msg_start * 3, 3);
           FastLED.show();
         }
         Serial.write(MSG_RECVD);
@@ -134,7 +134,7 @@ void loop() {
       if (Serial.available() >= 3) {
         Serial.readBytes(ledstrip_msg, 3);
         for (u16 i = 0; i < NUM_LEDS; i++) {
-          memcpy(ledstrip + i, ledstrip_msg, 3);
+          memcpy(ledstrip + i * 3, ledstrip_msg, 3);
         }
         FastLED.show();
         Serial.write(MSG_RECVD);
@@ -145,7 +145,7 @@ void loop() {
       if (Serial.available() >= 4) {
         Serial.readBytes(ledstrip_msg, 4);
         for (u16 i = 0; i < NUM_LEDS; i++) {
-          memcpy(ledstrip + i, ledstrip_msg, 4);
+          memcpy(ledstrip + i * 4, ledstrip_msg, 4);
         }
         FastLED.show();
         Serial.write(MSG_RECVD);
@@ -162,7 +162,7 @@ void loop() {
       if (Serial.available() >= 6) {
         Serial.readBytes(ledstrip_msg, 2);
         if (ledstrip_msg_start < NUM_LEDS) {
-          Serial.readBytes((u8 *)(ledstrip + ledstrip_msg_start), 4);
+          Serial.readBytes(ledstrip + ledstrip_msg_start * 4, 4);
           FastLED.show();
         }
         Serial.write(MSG_RECVD);
@@ -177,7 +177,7 @@ void loop() {
         }
       } else {
         if (Serial.available() >= ledstrip_msg_length * 3) {
-          Serial.readBytes((u8 *)(ledstrip + ledstrip_msg_start), ledstrip_msg_length * 3);
+          Serial.readBytes(ledstrip + ledstrip_msg_start * 3, ledstrip_msg_length * 3);
           FastLED.show();
           header_received = 0;
           Serial.write(MSG_RECVD);
@@ -193,7 +193,7 @@ void loop() {
         }
       } else {
         if (Serial.available() >= ledstrip_msg_length * 4) {
-          Serial.readBytes((u8 *)(ledstrip + ledstrip_msg_start), ledstrip_msg_length * 4);
+          Serial.readBytes(ledstrip + ledstrip_msg_start * 4, ledstrip_msg_length * 4);
           FastLED.show();
           header_received = 0;
           Serial.write(MSG_RECVD);

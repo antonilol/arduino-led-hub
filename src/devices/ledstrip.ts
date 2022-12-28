@@ -1,6 +1,6 @@
 import msgType from './msgtype';
 
-const arduinoRXBufferSize = 64;
+const arduinoRXBufferSize = 63;
 // message header size: 4, bytes per color: 3
 const maxRGBPerMsg = Math.floor((arduinoRXBufferSize - 4) / 3);
 // message header size: 4, bytes per color: 4
