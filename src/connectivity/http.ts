@@ -4,6 +4,8 @@ import { Server } from '.';
 import { ledstrip, display } from '../devices';
 import { sendBytes } from '../serial';
 import { join } from '../util';
+import { readFileSync } from 'fs';
+import config from '../config';
 
 function readParams(searchParams: URLSearchParams): { [k: string]: string } {
 	const params: { [k: string]: string } = {};
@@ -55,13 +57,23 @@ function successAndSend(res: ServerResponse, msg: Buffer | Buffer[]): void {
 export default class HttpServer implements Server {
 	private socket: string | number;
 
-	constructor(cfg?: { socket: string | number }) {
+	constructor(cfg?: typeof config['http']) {
 		this.socket = cfg?.socket || 3000;
 	}
 
 	start() {
-		createServer(this.requestListener).listen(this.socket);
-		console.log(`http server listening op port ${this.socket}`);
+		const server = createServer((req, res) => this.requestListener(req, res));
+		if (typeof this.socket === 'string' && /:\d+/.test(this.socket)) {
+			const parts = this.socket.split(':');
+			const port = parseInt(parts.pop()!);
+			server.listen(port, parts.join(':'), () => this.listeningListener());
+		} else {
+			server.listen(this.socket, () => this.listeningListener());
+		}
+	}
+
+	listeningListener() {
+		console.log(`http server listening on ${this.socket}`);
 	}
 
 	requestListener(req: IncomingMessage, res: ServerResponse) {
@@ -69,7 +81,10 @@ export default class HttpServer implements Server {
 			const url = new URL(`http://localhost/${req.url}`);
 			const args = url.pathname.split('/').filter(x => x.trim());
 			const params = readParams(url.searchParams);
-			if (args.length === 1) {
+			if (args.length === 0) {
+				res.writeHead(200);
+				res.end(readFileSync('index.html'));
+			} else if (args.length === 1) {
 				switch (args[0]) {
 					case 'setLedRGB':
 					case 'setLedRGBW': {

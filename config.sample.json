@@ -6,6 +6,6 @@
     "http"
   ],
   "http": {
-    "socket": 3000
+    "socket": "localhost:3000"
   }
 }
