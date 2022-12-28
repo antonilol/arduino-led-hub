@@ -4,6 +4,14 @@
 
 #include "config.h"
 
+#ifdef RGBW
+#define LED_BYTES 4
+#define FASTLED_NUM_LEDS ((NUM_LEDS * 4) / 3 + (NUM_LEDS * 4 % 3 != 0))
+#else
+#define LED_BYTES 3
+#define FASTLED_NUM_LEDS NUM_LEDS
+#endif
+
 #define serial_trash_bytes(n)                                                                      \
   do {                                                                                             \
     for (u8 i = 0; i < n; i++) {                                                                   \
@@ -46,21 +54,7 @@ enum msg_types {
 };
 
 #ifdef ENABLE_DISPLAY
-// pin numbers of ground pins, from left to right
-const u8 displayPins[DISPLAYS] = {5, A3, 6, A2};
-
-// pin numbers of positive pins for the segments a to g and the decimal separator
-const u8 segmentPins[8] = {A0, 8, 2, 4, A4, A1, 7, 3};
-
 u8 disps[DISPLAYS] = {0};
-#endif
-
-#ifdef RGBW
-#define LED_BYTES 4
-#define FASTLED_NUM_LEDS ((NUM_LEDS * 4) / 3 + (NUM_LEDS * 4 % 3 != 0))
-#else
-#define LED_BYTES 3
-#define FASTLED_NUM_LEDS NUM_LEDS
 #endif
 
 u8 ledstrip[NUM_LEDS][LED_BYTES] = {0};

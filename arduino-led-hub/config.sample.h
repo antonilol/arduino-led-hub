@@ -26,3 +26,9 @@
 
 // multiplex frequency
 #define DISPLAY_MULTIPLEX_FREQUENCY 120
+
+// pin numbers of ground pins, from left to right
+static constexpr u8 displayPins[DISPLAYS] = {5, A3, 6, A2};
+
+// pin numbers of positive pins for the segments a to g and the decimal separator
+static constexpr u8 segmentPins[8] = {A0, 8, 2, 4, A4, A1, 7, 3};
