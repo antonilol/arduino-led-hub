@@ -1,6 +1,26 @@
 # Arduino LED hub
 
-TODO this readme
+## Setup
+
+Copy `config.sample.json` to `config.json` and edit to your needs.
+
+Copy `arduino-led-hub/config.sample.h` to `arduino-led-hub/config.h` and edit to your needs.
+Make sure to get the pin numbers right!
+
+Compile and write arduino-led-hub/arduino-led-hub.ino to your Arduino (with the IDE)
+
+Install npm dependencies and build the server:
+
+```
+npm install
+npm run build
+```
+
+The server can started with
+
+```
+npm run start
+```
 
 ## Testing/usage/troubleshooting
 
