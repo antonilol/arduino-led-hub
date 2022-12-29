@@ -115,8 +115,8 @@ void loop() {
     case LEDSTRIP_SET_LEDS_RGB_UPDATE:
     case LEDSTRIP_SET_LEDS_RGBW_UPDATE:
       if (!header_received) {
-        if (Serial.available() >= color_bytes) {
-          Serial.readBytes(ledstrip_msg, color_bytes);
+        if (Serial.available() >= 3) {
+          Serial.readBytes(ledstrip_msg, 3);
           header_received = 1;
         }
       } else {
