@@ -2,11 +2,11 @@
   "name": "arduino-led-hub",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index",
-    "dev": "tsc && node dist/index",
-    "format": "prettier --write src",
+    "start": "node dist/src/index",
+    "dev": "tsc && node dist/src/index",
+    "format": "prettier --write src plugins/*.sample.plugin.ts tsconfig.json config.sample.json",
     "format_arduino": "cd arduino-led-hub; clang-format -i *.ino *.h",
-    "lint": "eslint --fix --max-warnings 0 src",
+    "lint": "eslint --fix --max-warnings 0 src plugins/*.sample.plugin.ts",
     "precommit": "npm run format && npm run lint && npm run build && npm run format_arduino"
   },
   "dependencies": {

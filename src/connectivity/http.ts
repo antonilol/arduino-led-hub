@@ -2,7 +2,6 @@ import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { URL, URLSearchParams } from 'url';
 import { Server } from '.';
 import { ledstrip, display } from '../devices';
-import { queueSerialMessage } from '../serial';
 import { join } from '../util';
 import { readFileSync } from 'fs';
 import config from '../config';

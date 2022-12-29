@@ -1,16 +1,12 @@
 {
-  "compilerOptions": {
-    "outDir": "dist",
-    "target": "es2021",
-    "moduleResolution": "node",
-    "module": "commonjs",
-    "esModuleInterop": true,
-    "strict": true
-  },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "dist/**"
-  ]
+	"compilerOptions": {
+		"outDir": "dist",
+		"target": "es2021",
+		"moduleResolution": "node",
+		"module": "commonjs",
+		"esModuleInterop": true,
+		"strict": true
+	},
+	"include": ["src/**/*.ts", "plugins/**/*.ts"],
+	"exclude": ["dist/**"]
 }

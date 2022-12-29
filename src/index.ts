@@ -1,8 +1,7 @@
 import { initServers } from './connectivity';
 import { initDevices } from './serial';
+import { loadPlugins } from './pluginloader';
 
-console.log('initDevices');
+loadPlugins();
 initDevices();
-console.log('initServers');
 initServers();
-console.log('init done');

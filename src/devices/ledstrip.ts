@@ -7,8 +7,8 @@ const maxRGBPerMsg = Math.floor((arduinoRXBufferSize - 4) / 3);
 // message header size: 4, bytes per color: 4
 const maxRGBWPerMsg = Math.floor((arduinoRXBufferSize - 4) / 4);
 
-type RGB = { r: number; g: number; b: number };
-type RGBW = RGB & { w: number };
+export type RGB = { r: number; g: number; b: number };
+export type RGBW = RGB & { w: number };
 
 export async function setLedRGB(n: number, { r, g, b }: RGB): Promise<void> {
 	const msg = Buffer.from([ msgType.SET_LEDS_RGB_UPDATE, 0, 0, 1, g, r, b ]);
@@ -48,11 +48,11 @@ function setLedsMsgFrag(start: number, data: RGB[] | RGBW[], update: boolean): B
 	return msg;
 }
 
-export async function setLeds(start: number, data: RGB[] | RGBW[]): Promise<void> {
+export async function setLeds(start: number, data: RGB[] | RGBW[], update = true): Promise<void> {
 	const msgs: Buffer[] = [];
 	const colorsPerMsg = 'w' in data[0] ? maxRGBWPerMsg : maxRGBPerMsg;
 	for (let i = 0; i < data.length; i += colorsPerMsg) {
-		msgs.push(setLedsMsgFrag(start + i, data.slice(i, i + colorsPerMsg), i + colorsPerMsg >= data.length));
+		msgs.push(setLedsMsgFrag(start + i, data.slice(i, i + colorsPerMsg), update && i + colorsPerMsg >= data.length));
 	}
 	await queueSerialMessage(msgs);
 }

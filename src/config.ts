@@ -10,22 +10,19 @@ interface Config {
 	http?: {
 		socket: string | number;
 	};
+	plugins: string[];
 }
 
 function mergeConfig(user: any, def: any, value = 'config'): any {
-	if (Array.isArray(def)) {
-		return user || def;
-	}
-
 	const res: any = {};
 
 	for (const k in def) {
 		const v = `${value}[${JSON.stringify(k)}]`;
-		if (typeof def[k] === 'object') {
+		if (typeof def[k] === 'object' && !Array.isArray(def[k])) {
 			res[k] = mergeConfig(user[k], def[k], v);
 		} else if (user[k] === undefined) {
 			res[k] = def[k];
-			console.log(`Warning: ${v} unset, defaulting to ${def[k]}`);
+			console.log(`Warning: ${v} unset, defaulting to ${JSON.stringify(def[k])}`);
 		} else {
 			res[k] = user[k];
 		}

@@ -5,3 +5,7 @@ dist/
 # user configuration
 config.json
 arduino-led-hub/config.h
+
+# plugins
+plugins/*
+!plugins/*.sample.plugin.ts
