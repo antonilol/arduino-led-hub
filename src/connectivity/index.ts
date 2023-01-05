@@ -5,7 +5,9 @@ export interface Server {
 	start(): void;
 }
 
-export const availableServers: Readonly<{ [name in typeof config.servers[number]]: new (cfg: typeof config[name]) => Server }> = Object.freeze({
+export const availableServers: Readonly<{
+	[name in typeof config.servers[number]]: new (cfg: typeof config[name]) => Server;
+}> = Object.freeze({
 	http: HttpServer
 });
 

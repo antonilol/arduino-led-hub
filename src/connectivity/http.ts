@@ -53,7 +53,7 @@ export default class implements Server {
 		this.registerRequestListener('setLeds', [ 'name', 'data' ], [ 'start' ], async params => {
 			const data = JSON.parse(params.data);
 			if (!Array.isArray(data)) {
-				throw new Error(`Query string parameter "data" must be an array\n`);
+				throw new Error(`Query string parameter "data" must be an array`);
 			}
 			await ledstrip.setLeds(
 				params.name,
@@ -107,26 +107,23 @@ export default class implements Server {
 			const args = url.pathname.split('/').filter(x => x.trim());
 			const params = readParams(url.searchParams);
 			if (args.length === 0) {
-				res.writeHead(200);
+				res.writeHead(200, { 'Content-Type': 'text/html' });
 				res.end(readFileSync('index.html'));
+				return;
 			} else if (args.length === 1) {
 				if (args[0] in this.requestListeners) {
-					const ret = (await this.requestListeners[args[0]](params)) || 'Success';
-					res.writeHead(200);
-					res.end(`${ret}\n`);
-				} else {
-					res.writeHead(404);
-					res.end('Not Found\n');
+					const ret = await this.requestListeners[args[0]](params);
+					res.writeHead(200, { 'Content-Type': 'application/json' });
+					res.end(JSON.stringify({ ok: true, message: ret || null }));
 					return;
 				}
-			} else {
-				res.writeHead(404);
-				res.end('Not Found\n');
-				return;
 			}
+			res.writeHead(404, { 'Content-Type': 'application/json' });
+			res.end(JSON.stringify({ ok: false, message: 'Not Found' }));
+			return;
 		} catch (e) {
-			res.writeHead(400);
-			res.end(`${e instanceof Error ? e.message : e}\n`);
+			res.writeHead(400, { 'Content-Type': 'application/json' });
+			res.end(JSON.stringify({ ok: false, message: e instanceof Error ? e.message : e }));
 			return;
 		}
 	}
