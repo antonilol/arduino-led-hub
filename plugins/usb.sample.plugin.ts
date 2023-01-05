@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import { basename } from 'path';
 import { ledstrip } from '../src/devices';
+import * as colorutil from '../src/colorutil';
 
 function watchUSBDevices(
 	cb: (update: { kernelTimestamp: number; action: string; data: { [k: string]: string } }) => void
@@ -43,14 +44,14 @@ const ports: { [port: string]: number | { start: number; length: number } } = {
 	'7.1': 54
 };
 
-function setPortLed(port: string, color: ledstrip.RGB | ledstrip.RGBW, update = true): void {
+function setPortLed(port: string, color: colorutil.RGB | colorutil.RGBW, update = true): void {
 	const led = ports[port];
 	if (!led) {
 		return;
 	}
 	const start = typeof led === 'number' ? led : led.start;
 	const length = typeof led === 'number' ? 1 : led.length;
-	ledstrip.setLeds(start, new Array(length).fill(color), update);
+	ledstrip.setLeds('monitor_backlight', new Array(length).fill(color), start, update);
 }
 
 const portNames = Object.keys(ports);

@@ -1,58 +1,69 @@
+import config, { ledstripConfig } from '../config';
 import { queueSerialMessage } from '../serial';
-import msgType, { LEDSTRIP_RGBW_BIT, LEDSTRIP_SET_LEDS_UPDATE_BIT } from './msgtype';
+import msgType from './msgtype';
+import * as colorutil from '../colorutil';
 
-const arduinoRXBufferSize = 63;
-// message header size: 4, bytes per color: 3
-const maxRGBPerMsg = Math.floor((arduinoRXBufferSize - 4) / 3);
-// message header size: 4, bytes per color: 4
-const maxRGBWPerMsg = Math.floor((arduinoRXBufferSize - 4) / 4);
-
-export type RGB = { r: number; g: number; b: number };
-export type RGBW = RGB & { w: number };
-
-export async function setLedRGB(n: number, { r, g, b }: RGB): Promise<void> {
-	const msg = Buffer.from([ msgType.SET_LEDS_RGB_UPDATE, 0, 0, 1, g, r, b ]);
-	msg.writeUint16LE(n, 1);
-	await queueSerialMessage(msg);
+export async function setLed(name: string, index: number, color: { [k: string]: number }): Promise<void> {
+	return await setLeds(name, [ color ], index);
 }
 
-export async function setLedRGBW(n: number, { r, g, b, w }: RGBW): Promise<void> {
-	const msg = Buffer.from([ msgType.SET_LEDS_RGBW_UPDATE, 0, 0, 1, g, r, b, w ]);
-	msg.writeUint16LE(n, 1);
-	await queueSerialMessage(msg);
-}
-
-export async function fillRGB({ r, g, b }: RGB): Promise<void> {
-	await queueSerialMessage(Buffer.from([ msgType.FILL_RGB, g, r, b ]));
-}
-
-export async function fillRGBW({ r, g, b, w }: RGBW): Promise<void> {
-	await queueSerialMessage(Buffer.from([ msgType.FILL_RGBW, g, r, b, w ]));
-}
-
-function setLedsMsgFrag(start: number, data: RGB[] | RGBW[], update: boolean): Buffer {
-	const rgbw = 'w' in data[0];
-	const msg = Buffer.allocUnsafe(4 + (rgbw ? 4 : 3) * data.length);
-	msg.writeUint8((rgbw ? LEDSTRIP_RGBW_BIT : 0) | (update ? LEDSTRIP_SET_LEDS_UPDATE_BIT : 0), 0);
-	msg.writeUint16LE(start, 1);
-	msg.writeUint8(data.length, 3);
-	let p = 4;
-	for (const d of data) {
-		msg.writeUint8(d.g, p++);
-		msg.writeUint8(d.r, p++);
-		msg.writeUint8(d.b, p++);
-		if (rgbw) {
-			msg.writeUint8((d as RGBW).w, p++);
-		}
+export async function fillLeds(name: string, color: { [k: string]: number }, start = 0, end?: number): Promise<void> {
+	const { serializedColor, ledstrip } = colorutil.serializeColor(name, color);
+	if (end === undefined) {
+		end = ledstrip.length;
 	}
-	return msg;
+	if (start < 0 || start >= ledstrip.length) {
+		throw new Error('"start" out of bounds');
+	}
+	if (end <= 0 || end > ledstrip.length) {
+		throw new Error('"end" out of bounds');
+	}
+	const length = end - start;
+	if (length <= 0) {
+		throw new Error('"start" must be smaller than "end"');
+	}
+	const header = Buffer.allocUnsafe(6);
+	header.writeUint8(msgType.LEDSTRIP_FILL_LEDS, 0);
+	header.writeUint16LE(ledstrip.offset + ledstrip.colors.length * start, 1);
+	header.writeUint16LE(length, 3);
+	header.writeUint8(ledstrip.colors.length, 5);
+	await queueSerialMessage(Buffer.concat([ header, serializedColor ]));
 }
 
-export async function setLeds(start: number, data: RGB[] | RGBW[], update = true): Promise<void> {
+export async function setLeds(
+	name: string,
+	colors: { [k: string]: number }[],
+	start = 0,
+	update = true
+): Promise<void> {
+	if (!colors.length) {
+		return;
+	}
 	const msgs: Buffer[] = [];
-	const colorsPerMsg = 'w' in data[0] ? maxRGBWPerMsg : maxRGBPerMsg;
-	for (let i = 0; i < data.length; i += colorsPerMsg) {
-		msgs.push(setLedsMsgFrag(start + i, data.slice(i, i + colorsPerMsg), update && i + colorsPerMsg >= data.length));
+	let currentBuffer: Buffer;
+	let currentPos = 0; // excluding header
+	let offset: number;
+	for (const color of colors) {
+		const { serializedColor, ledstrip } = colorutil.serializeColor(name, color);
+		if (!currentBuffer!) {
+			offset = ledstrip.offset + ledstrip.colors.length * start;
+		}
+		if (!currentBuffer! || currentPos + 4 + serializedColor.length > currentBuffer.length) {
+			offset! += currentPos;
+			if (currentBuffer!) {
+				currentBuffer.writeUint8(msgType.LEDSTRIP_SET_LEDS, 0);
+				currentBuffer.writeUint8(currentPos, 3);
+				msgs.push(currentBuffer.subarray(0, currentPos + 4));
+			}
+			currentBuffer = Buffer.allocUnsafe(config.hardware.max_serial_message_length);
+			currentBuffer.writeUint16LE(offset!, 1);
+			currentPos = 0;
+		}
+		serializedColor.copy(currentBuffer, currentPos + 4);
+		currentPos += serializedColor.length;
 	}
+	currentBuffer!.writeUint8(update ? msgType.LEDSTRIP_SET_LEDS_UPDATE : msgType.LEDSTRIP_SET_LEDS, 0);
+	currentBuffer!.writeUint8(currentPos, 3);
+	msgs.push(currentBuffer!.subarray(0, currentPos + 4));
 	await queueSerialMessage(msgs);
 }

@@ -4,20 +4,21 @@
     "build": "tsc",
     "start": "node dist/src/index",
     "dev": "tsc && node dist/src/index",
-    "format": "prettier --write src plugins/*.sample.plugin.ts tsconfig.json config.sample.json",
+    "format": "prettier --write src plugins util tsconfig.json config.sample.json",
     "format_arduino": "cd arduino-led-hub; clang-format -i *.ino *.h",
-    "lint": "eslint --fix --max-warnings 0 src plugins/*.sample.plugin.ts",
-    "precommit": "npm run format && npm run lint && npm run build && npm run format_arduino"
+    "generate_config": "npm run build && node dist/util/generate_arduino_config",
+    "lint": "eslint --fix --max-warnings 0 src plugins util",
+    "precommit": "npm run format && npm run lint && npm run build; npm run format_arduino"
   },
   "dependencies": {
-    "@types/node": "^18.6.3",
-    "serialport": "^10.4.0",
-    "typescript": "^4.7.4"
+    "@types/node": "^18.11.18",
+    "serialport": "^10.5.0",
+    "typescript": "^4.9.4"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.47.0",
-    "eslint": "^8.30.0",
-    "eslint-config-prettier": "^8.5.0",
+    "@typescript-eslint/eslint-plugin": "^5.48.0",
+    "eslint": "^8.31.0",
+    "eslint-config-prettier": "^8.6.0",
     "prettier": "^2.8.1"
   }
 }

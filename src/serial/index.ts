@@ -7,7 +7,7 @@ import { logData, logMessage } from './log';
 const dir = '/dev/';
 // const devices = /^tty(USB|ACM)\d+$/;
 const device = config.serial_port || 'ttyUSB0';
-const baudRate = config.baud_rate || 9600;
+const baudRate = config.hardware.baud_rate || 9600;
 
 let port: undefined | SerialPort;
 let portLocked = false;

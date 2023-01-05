@@ -4,17 +4,16 @@
 
 Copy `config.sample.json` to `config.json` and edit to your needs.
 
-Copy `arduino-led-hub/config.sample.h` to `arduino-led-hub/config.h` and edit to your needs.
-Make sure to get the pin numbers right!
+TODO: explain the config file entries here
 
-Compile and write arduino-led-hub/arduino-led-hub.ino to your Arduino (with the IDE)
-
-Install npm dependencies and build the server:
+Install npm dependencies and generate the required config for the arduino:
 
 ```
 npm install
-npm run build
+npm run generate_config
 ```
+
+Compile and upload arduino-led-hub/arduino-led-hub.ino to your Arduino (with the IDE)
 
 The server can started with
 
@@ -27,15 +26,15 @@ npm run start
 ### Sending to a unix socket with `curl`:
 
 ```
-curl --unix-socket /path/to/socket.sock "localhost/fillRGB?r=0&g=255&b=255"
+curl --unix-socket /path/to/socket.sock "localhost/fillLeds?name=monitor_backlight&color=$(node -pe 'encodeURIComponent(JSON.stringify({r:50,g:0,b:0}))')"
 ```
 
 ### EncodeURIComponent and JSON.stringify one-liner with `node -pe`:
 
-Sets the first 50 LEDs to a gradient from green to blue
+Sets the first 50 LEDs of "monitor_backlight" to a gradient from green to blue
 
 ```
-curl --unix-socket /path/to/socket.sock "localhost/setLedsRGB?data=$(node -pe 'encodeURIComponent(JSON.stringify(new Array(50).fill().map((_,i)=>({r:0,g:255-i*5,b:i*5}))))')"
+curl --unix-socket /path/to/socket.sock "localhost/setLeds?name=monitor_backlight&data=$(node -pe 'encodeURIComponent(JSON.stringify(new Array(50).fill().map((_,i)=>({r:0,g:255-i*5,b:i*5}))))')"
 ```
 
 This evaluates the following JavaScript with `node -pe`:

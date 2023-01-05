@@ -1,6 +1,17 @@
 {
 	"serial_port": "ttyUSB0",
-	"baud_rate": 9600,
+	"hardware": {
+		"baud_rate": 9600,
+		"max_serial_message_length": 63,
+		"ledstrips": [
+			{
+				"name": "monitor_backlight",
+				"length": 55,
+				"pin": 10,
+				"type": "GRB"
+			}
+		]
+	},
 	"debug_serial_msgs": true,
 	"servers": ["http"],
 	"http": {

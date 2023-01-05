@@ -3,11 +3,10 @@
 #include <limits.h>
 
 #include "config.h"
+#include "generated-config.h"
 
-#ifdef RGBW
-#define FASTLED_NUM_LEDS ((NUM_LEDS * 4) / 3 + (NUM_LEDS * 4 % 3 != 0))
-#else
-#define FASTLED_NUM_LEDS NUM_LEDS
+#if SERIAL_RX_BUFFER_SIZE <= MAX_SERIAL_MESSAGE_LENGTH
+#error Increase SERIAL_RX_BUFFER_SIZE or decrease config.hardware.max_serial_message_length
 #endif
 
 #define serial_trash_bytes(n)                                                                      \
@@ -22,27 +21,17 @@
 // undefined types are assumed to have 0 bytes of data and are ignored
 
 // message types for messages sent from the host to the Arduino
-// messages specific to rgb or rgbw will have the LSB (1<<0) set to 0 for rgb and 1 for rgbw
 enum rx_msg_type {
-  // 3+3n bytes, 2 bytes u16 (le) led number, 1 byte length n, n times g, r, b
-  LEDSTRIP_SET_LEDS_RGB = 0x00,
-  // 3+4n bytes, 2 bytes u16 (le) led number, 1 byte length n, n times g, r, b, w
-  LEDSTRIP_SET_LEDS_RGBW = 0x01,
-  // LEDSTRIP_SET_LEDS_RGB but also updates the led strip
-  LEDSTRIP_SET_LEDS_RGB_UPDATE = 0x02,
-  // LEDSTRIP_SET_LEDS_RGBW but also updates the led strip
-  LEDSTRIP_SET_LEDS_RGBW_UPDATE = 0x03,
-  // 3 bytes, g, r, b
+  // 3+n bytes: u16 byte offset, u8 byte length `n`, n bytes
+  LEDSTRIP_SET_LEDS = 0x00,
+  // LEDSTRIP_SET_LEDS but also updates the led strip
+  LEDSTRIP_SET_LEDS_UPDATE = 0x01,
+  // 5+n bytes: u16 byte offset, u16 length, u8 bytes per led `n`, n bytes
   // updates the led strip
-  LEDSTRIP_FILL_RGB = 0x04,
-  // 4 bytes, g, r, b, w
-  // updates the led strip
-  LEDSTRIP_FILL_RGBW = 0x05,
-  // 4 bytes, memcpy to u8 *display
-  DISPLAY_WRITE = 0x06
+  LEDSTRIP_FILL_LEDS = 0x02,
+  // 4 bytes: memcpy to u8 *display
+  DISPLAY_WRITE = 0x03
 };
-#define LEDSTRIP_RGBW_BIT 0x01
-#define LEDSTRIP_SET_LEDS_UPDATE_BIT 0x02
 
 // message types for messages sent from the Arduino to the host
 enum tx_msg_type {
@@ -50,7 +39,7 @@ enum tx_msg_type {
   READY = 0x00
 };
 
-u8 ledstrip[FASTLED_NUM_LEDS * 3] = {0};
+u8 ledstrip[LEDSTRIP_BUFFER_LENGTH] = {0};
 
 #ifdef ENABLE_DISPLAY
 u8 disps[DISPLAYS] = {0};
@@ -59,7 +48,7 @@ u8 disps[DISPLAYS] = {0};
 void setup() {
   Serial.begin(BAUD_RATE);
 
-  FastLED.addLeds<WS2812, LEDSTRIP_PIN, RGB>((CRGB *)ledstrip, FASTLED_NUM_LEDS);
+  ADD_LEDS
 #ifdef FADE_IN_ON_BOOT
   for (u8 i = 0; i < 0x3f; i++) {
     memset(&ledstrip, i + 1, 150);
@@ -86,46 +75,41 @@ void setup() {
 bool type_received = 0;
 // see rx_msg_type
 u8 type;
-// 4 if the current message has the LSB (1<<0) set, see rx_msg_type, otherwise 3
-u8 color_bytes;
 
 // when reading messages where the total length is not known
 // before reading the header, the message could be read in 2 parts
 // in between the 2 parts `header_received` and `type_received` are true (1)
 bool header_received = 0;
-u8 ledstrip_msg[4];
-// points to the led number in a received message
-#define ledstrip_msg_start (*((u16 *)(ledstrip_msg)))
-// only for SET_LEDS_RGB{,W}
-// points to the amount of leds in a received message
-#define ledstrip_msg_length (*(ledstrip_msg + 2))
+u8 ledstrip_msg[5];
+// SET_LEDS pointers
+#define set_leds_byte_offset (*((u16 *)(ledstrip_msg)))
+#define set_leds_byte_length (*((u8 *)(ledstrip_msg + 2)))
+
+// FILL_LEDS pointers
+#define fill_leds_byte_offset (*((u16 *)(ledstrip_msg)))
+#define fill_leds_length (*((u16 *)(ledstrip_msg + 2)))
+#define fill_leds_bytes_per_led (*((u8 *)(ledstrip_msg + 4)))
 
 void loop() {
   if (!type_received) {
     if (Serial.available() >= 1) {
       Serial.readBytes(&type, 1);
-      color_bytes = (type & LEDSTRIP_RGBW_BIT) + 3;
       type_received = 1;
     }
   }
   if (type_received) {
     switch (type) {
-    case LEDSTRIP_SET_LEDS_RGB:
-    case LEDSTRIP_SET_LEDS_RGBW:
-    case LEDSTRIP_SET_LEDS_RGB_UPDATE:
-    case LEDSTRIP_SET_LEDS_RGBW_UPDATE:
+    case LEDSTRIP_SET_LEDS:
+    case LEDSTRIP_SET_LEDS_UPDATE:
       if (!header_received) {
         if (Serial.available() >= 3) {
           Serial.readBytes(ledstrip_msg, 3);
           header_received = 1;
         }
       } else {
-        if (Serial.available() >= ledstrip_msg_length * color_bytes) {
-          Serial.readBytes(ledstrip + ledstrip_msg_start * color_bytes,
-                           ledstrip_msg_length * color_bytes);
-          // LEDSTRIP_SET_LEDS_RGB{,W}_UPDATE both have the (1<<1) bit set
-          // and LEDSTRIP_SET_LEDS_RGB{,W} do not
-          if (type & LEDSTRIP_SET_LEDS_UPDATE_BIT) {
+        if (Serial.available() >= set_leds_byte_length) {
+          Serial.readBytes(ledstrip + set_leds_byte_offset, set_leds_byte_length);
+          if (type == LEDSTRIP_SET_LEDS_UPDATE) {
             FastLED.show();
           }
           header_received = 0;
@@ -134,16 +118,24 @@ void loop() {
         }
       }
       break;
-    case LEDSTRIP_FILL_RGB:
-    case LEDSTRIP_FILL_RGBW:
-      if (Serial.available() >= color_bytes) {
-        Serial.readBytes(ledstrip_msg, color_bytes);
-        for (u16 i = 0; i < NUM_LEDS; i++) {
-          memcpy(ledstrip + i * color_bytes, ledstrip_msg, color_bytes);
+    case LEDSTRIP_FILL_LEDS:
+      if (!header_received) {
+        if (Serial.available() >= 5) {
+          Serial.readBytes(ledstrip_msg, 5);
+          header_received = 1;
         }
-        FastLED.show();
-        Serial.write(READY);
-        type_received = 0;
+      } else {
+        if (Serial.available() >= fill_leds_bytes_per_led) {
+          Serial.readBytes(ledstrip + fill_leds_byte_offset, fill_leds_bytes_per_led);
+          for (u16 i = 1; i < fill_leds_length; i++) {
+            memcpy(ledstrip + fill_leds_byte_offset + i * fill_leds_bytes_per_led,
+                   ledstrip + fill_leds_byte_offset, fill_leds_bytes_per_led);
+          }
+          FastLED.show();
+          header_received = 0;
+          Serial.write(READY);
+          type_received = 0;
+        }
       }
       break;
     case DISPLAY_WRITE:

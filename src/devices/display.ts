@@ -14,7 +14,7 @@ export async function updateDisplayFloat(n: number, maxdecimals: number): Promis
 		throw new Error('Number too long');
 	}
 	const displayNumber = (intPart + floatPart).slice(0, 4);
-	const msg = Buffer.from([ msgType.UPDATE_DISPLAY, 0, 0, 0, 0 ]);
+	const msg = Buffer.from([ msgType.DISPLAY_WRITE, 0, 0, 0, 0 ]);
 	for (let i = 0; i < displayNumber.length; i++) {
 		msg[i + 1] = display7seg[parseInt(displayNumber[i])];
 	}
