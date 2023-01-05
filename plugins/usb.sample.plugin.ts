@@ -44,7 +44,7 @@ const ports: { [port: string]: number | { start: number; length: number } } = {
 	'7.1': 54
 };
 
-function setPortLed(port: string, color: colorutil.RGB | colorutil.RGBW, update = true): void {
+function setPortLed(port: string, color: { [k: string]: number }, update = true): void {
 	const led = ports[port];
 	if (!led) {
 		return;

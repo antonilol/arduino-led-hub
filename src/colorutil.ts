@@ -1,13 +1,6 @@
 import * as util from './util';
 import { ledstripConfig, LedStrip } from './config';
 
-export type RGB = { r: number; g: number; b: number };
-export type RGBW = RGB & { w: number };
-
-export function isRGBW(color: RGB | RGBW): color is RGBW {
-	return 'w' in color && !!color.w;
-}
-
 /** This function will throw an error if `ledstripName` is not valid */
 export function serializeColor(
 	ledstripName: string,
@@ -33,7 +26,7 @@ export function serializeColor(
 }
 
 /** Convert HSV to RGB. H: 0-360, S: 0-1, V: 0-1 */
-export function HSVtoRGB(h: number, s: number, v: number): RGB {
+export function HSVtoRGB({ h, s, v }: { h: number; s: number; v: number }): { r: number; g: number; b: number } {
 	const i = Math.floor(h / 60);
 	const f = h / 60 - i;
 	v *= 255;
