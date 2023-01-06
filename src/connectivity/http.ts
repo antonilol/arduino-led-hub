@@ -32,12 +32,14 @@ type RequestListener<R extends string = string, O extends string = string> = (
 	params: { [k in R]: string } & { [k in O]?: string }
 ) => string | void | Promise<string | void>;
 
-export default class implements Server {
+export default class HttpServer implements Server {
 	private started = false;
 	private socket: string | number;
 	private requestListeners: { [name: string]: RequestListener } = {};
 
 	constructor(cfg?: typeof config['http']) {
+		HttpServer.instance = this;
+
 		this.socket = cfg?.socket || 3000;
 
 		this.registerRequestListener('setLed', [ 'name', 'index', 'color' ], [], async params => {
@@ -126,5 +128,11 @@ export default class implements Server {
 			res.end(JSON.stringify({ ok: false, message: e instanceof Error ? e.message : e }));
 			return;
 		}
+	}
+
+	private static instance: HttpServer | undefined;
+
+	static getInstance(): HttpServer | undefined {
+		return this.instance;
 	}
 }

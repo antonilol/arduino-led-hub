@@ -5,11 +5,11 @@ export interface Server {
 	start(): void;
 }
 
-export const availableServers: Readonly<{
-	[name in typeof config.servers[number]]: new (cfg: typeof config[name]) => Server;
-}> = Object.freeze({
+export const availableServers = Object.freeze({
 	http: HttpServer
-});
+}) satisfies Readonly<{
+	[name in typeof config.servers[number]]: new (cfg: typeof config[name]) => Server;
+}>;
 
 export function initServers() {
 	for (const s of config.servers) {
