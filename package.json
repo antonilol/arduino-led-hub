@@ -4,11 +4,12 @@
     "build": "tsc",
     "start": "node dist/src/index",
     "dev": "tsc && node dist/src/index",
-    "format": "prettier --write src plugins util tsconfig.json config.sample.json",
+    "prettier": "prettier --write src plugins util tsconfig.json config.sample.json",
+    "format": "npm run prettier && eslint --fix --quiet src plugins util",
     "format_arduino": "cd arduino-led-hub; clang-format -i *.ino *.h",
     "generate_config": "npm run build && node dist/util/generate_arduino_config",
     "lint": "eslint --fix --max-warnings 0 src plugins util",
-    "precommit": "npm run format && npm run lint && npm run build; npm run format_arduino"
+    "precommit": "npm run prettier && npm run lint && npm run build; npm run format_arduino"
   },
   "dependencies": {
     "@types/node": "^18.11.18",
